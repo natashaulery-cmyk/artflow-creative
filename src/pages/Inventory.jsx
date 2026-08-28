@@ -7,6 +7,7 @@ import { calculateUnitCost as calcUnit } from "@/lib/orderCost";
 import { toast } from "sonner";
 import InventoryEditSheet from "@/components/InventoryEditSheet";
 import PullToRefresh from "@/components/PullToRefresh";
+import { Image } from "@/components/ui/image";
 
 export default function Inventory() {
   const { records, loading, reload: reloadInventory } = useEntity("InventoryCost", "-created_date");
@@ -175,7 +176,13 @@ export default function Inventory() {
               className={`${cardTone} rounded-3xl p-5 border transition-colors`}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="min-w-0">
+                <div className="flex items-start gap-3 min-w-0">
+                  {rec.image_url && (
+                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-[hsl(var(--border))] shrink-0 bg-muted">
+                      <Image src={rec.image_url} fittingType="fill" className="w-full h-full" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-muted text-muted-foreground">
                       {cat}
@@ -188,6 +195,7 @@ export default function Inventory() {
                   <p className="text-xs text-foreground">
                     Base {formatMoney(rec.base_item_cost)} · Unit cost {formatMoney(unitCost)}
                   </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => openEdit(rec)}

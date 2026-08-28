@@ -21,6 +21,10 @@
       "type": "string",
       "description": "Frame/print size (e.g. 5x7). Used to match order cost for frames."
     },
+    "image_url": {
+      "type": "string",
+      "description": "Uploaded photo of the artwork / item"
+    },
     "base_item_cost": {
       "type": "number"
     },

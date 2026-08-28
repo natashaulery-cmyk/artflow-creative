@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Camera, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { calculateUnitCost } from "@/lib/orderCost";
 import { toast } from "sonner";
 import Field from "@/components/Field";
+import { Image } from "@/components/ui/image";
 
 const categories = ["Frame", "Print", "Supply", "Packaging", "Other"];
 const sizes = ["4x4", "4x6", "5x7", "8x8", "8x10", "11x14"];
@@ -13,6 +14,7 @@ const emptyForm = {
   category: "Frame",
   name: "",
   size: "",
+  image_url: "",
   base_item_cost: "",
   paper_ink_cost: "",
   packaging_cost: "",
@@ -23,6 +25,7 @@ const emptyForm = {
 export default function InventoryEditSheet({ open, onClose, record }) {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const isCreate = !record;
 
   useEffect(() => {
@@ -32,6 +35,7 @@ export default function InventoryEditSheet({ open, onClose, record }) {
           category: record.category || "Frame",
           name: record.name || "",
           size: record.size || "",
+          image_url: record.image_url || "",
           base_item_cost: String(record.base_item_cost ?? ""),
           paper_ink_cost: String(record.paper_ink_cost ?? ""),
           packaging_cost: String(record.packaging_cost ?? ""),
@@ -46,6 +50,21 @@ export default function InventoryEditSheet({ open, onClose, record }) {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const usesSize = form.category === "Frame" || form.category === "Print";
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      set("image_url", file_url);
+    } catch (err) {
+      toast.error("Could not upload photo");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,6 +91,7 @@ export default function InventoryEditSheet({ open, onClose, record }) {
         packaging_cost: Number(form.packaging_cost) || 0,
         quantity_on_hand: Number(form.quantity_on_hand) || 0,
         low_stock_level: Number(form.low_stock_level) || 0,
+        image_url: form.image_url || null,
       };
       payload.total_unit_cost = calculateUnitCost(payload);
       if (isCreate) {
@@ -137,6 +157,44 @@ export default function InventoryEditSheet({ open, onClose, record }) {
                     </button>
                   ))}
                 </div>
+              </Field>
+
+              <Field label="Photo">
+                {form.image_url ? (
+                  <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-[hsl(var(--border))]">
+                    <Image
+                      src={form.image_url}
+                      fittingType="fit"
+                      className="w-full h-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => set("image_url", "")}
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-40 rounded-2xl border border-dashed border-[hsl(var(--border))] bg-muted/40 cursor-pointer">
+                    {uploading ? (
+                      <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+                    ) : (
+                      <>
+                        <Camera className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-sm text-muted-foreground">
+                          Add a photo
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhoto}
+                    />
+                  </label>
+                )}
               </Field>
 
               {usesSize ? (
