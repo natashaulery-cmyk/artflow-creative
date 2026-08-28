@@ -4,6 +4,11 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  resolve: {
+    // Force a single copy of React/ReactDOM so hooks don't end up bound to
+    // a stale dispatcher ("null is not an object (evaluating 'dispatcher.useState')")
+    dedupe: ['react', 'react-dom'],
+  },
   plugins: [
     base44({
       // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.

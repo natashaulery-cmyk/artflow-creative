@@ -1,0 +1,33 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "client_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "paid",
+        "unpaid"
+      ],
+      "default": "unpaid"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_name",
+    "amount",
+    "due_date",
+    "status"
+  ]
+}
