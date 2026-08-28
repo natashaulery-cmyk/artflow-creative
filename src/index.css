@@ -10,7 +10,7 @@
     --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
-    --primary: 222 47% 22%;
+    --primary: 236 26% 32%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 10% 95%;
     --secondary-foreground: 0 0% 0%;
@@ -22,13 +22,13 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 10% 89%;
     --input: 220 10% 89%;
-    --ring: 222 47% 22%;
+    --ring: 236 26% 32%;
     --radius: 1.25rem;
     --font-heading: 'Fraunces', ui-serif, Georgia, serif;
     --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-display: 'Fraunces', ui-serif, Georgia, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    --lavender: 220 10% 95%;
+    --lavender: 236 23% 77%;
     --mint: 220 9% 96%;
     --peach: 220 10% 94%;
     --paleyellow: 220 9% 95%;
@@ -42,7 +42,7 @@
     --card-foreground: 0 0% 98%;
     --popover: 220 13% 13%;
     --popover-foreground: 0 0% 98%;
-    --primary: 222 60% 55%;
+    --primary: 236 32% 62%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 10% 18%;
     --secondary-foreground: 0 0% 98%;
@@ -54,7 +54,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 10% 22%;
     --input: 220 10% 20%;
-    --ring: 222 60% 55%;
+    --ring: 236 32% 62%;
   }
 }
 
