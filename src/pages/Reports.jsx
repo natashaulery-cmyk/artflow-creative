@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
+import MonthlySummary from "@/components/MonthlySummary";
 import PullToRefresh from "@/components/PullToRefresh";
 
 const cardLink = "block active:scale-95 transition-transform";
@@ -97,6 +98,8 @@ export default function Reports() {
           <p className="text-muted-foreground text-sm">Performance over time</p>
         </div>
       </header>
+
+      <MonthlySummary orders={orders} expenses={expenses} />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         {periods.map((p) => (
