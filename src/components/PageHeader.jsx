@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Logo from "@/components/Logo";
 
@@ -17,7 +18,9 @@ export default function PageHeader({ title, subtitle, onBack, right, className =
           <ArrowLeft className="w-4 h-4" />
         </button>
       )}
-      <Logo size={36} className="shrink-0" />
+      <Link to="/" aria-label="Go to home" className="shrink-0 active:scale-95 transition-transform">
+        <Logo size={36} />
+      </Link>
       <div className="min-w-0">
         <h1 className="font-heading text-[28px] leading-tight">{title}</h1>
         {subtitle && <p className="text-muted-foreground text-sm">{subtitle}</p>}
