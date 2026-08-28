@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { formatMoney, formatDate } from "@/lib/format";
 import ArtPieceForm from "@/components/ArtPieceForm";
@@ -11,6 +11,7 @@ const tabs = ["All", "Available", "Sold"];
 export default function Gallery() {
   const { records, loading, reload } = useEntity("ArtPiece", "-created_date");
   const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
 
@@ -23,10 +24,16 @@ export default function Gallery() {
     return { total: records.length, available, soldCount: sold.length, revenue };
   }, [records]);
 
-  const filtered = useMemo(
-    () => records.filter((p) => filter === "All" || (p.status || "Available") === filter),
-    [records, filter]
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return records.filter((p) => {
+      if (filter !== "All" && (p.status || "Available") !== filter) return false;
+      if (!q) return true;
+      return `${p.title || ""} ${p.medium || ""} ${p.size || ""} ${p.platform || ""} ${p.buyer || ""} ${p.notes || ""}`
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [records, filter, search]);
 
   const openCreate = () => {
     setEditRecord(null);
@@ -82,6 +89,16 @@ export default function Gallery() {
           <span className="font-heading text-xl text-black">{formatMoney(stats.revenue)}</span>
         </div>
       )}
+
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search title or category"
+          className="form-input pl-11"
+        />
+      </div>
 
       <div className="flex gap-2">
         {tabs.map((t) => (
