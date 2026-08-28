@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import GoogleSheetsConnect from "@/components/GoogleSheetsConnect";
 import GoogleCalendarConnect from "@/components/GoogleCalendarConnect";
+import BusinessManager from "@/components/BusinessManager";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -14,15 +15,12 @@ export default function Account() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [businessName, setBusinessName] = useState("");
-  const [savingBusiness, setSavingBusiness] = useState(false);
 
   useEffect(() => {
     base44.auth
       .me()
       .then((me) => {
         setUser(me);
-        setBusinessName(me?.business_name || me?.data?.business_name || "");
       })
       .catch(() => {});
   }, []);
@@ -40,18 +38,6 @@ export default function Account() {
     }
   };
 
-  const saveBusiness = async () => {
-    setSavingBusiness(true);
-    try {
-      await base44.auth.updateMe({ business_name: businessName.trim() });
-      setUser((u) => ({ ...u, business_name: businessName.trim() }));
-      toast.success("Business name saved");
-    } catch (e) {
-      toast.error("Could not save business name");
-    } finally {
-      setSavingBusiness(false);
-    }
-  };
 
   return (
     <div className="space-y-5">
@@ -72,25 +58,7 @@ export default function Account() {
         </div>
       </section>
 
-      <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
-        <h2 className="font-heading text-lg mb-1">Business name</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Personalize the app with your business name.
-        </p>
-        <input
-          value={businessName}
-          onChange={(e) => setBusinessName(e.target.value)}
-          placeholder="e.g. Studio Prints"
-          className="form-input mb-3"
-        />
-        <button
-          onClick={saveBusiness}
-          disabled={savingBusiness}
-          className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
-        >
-          {savingBusiness ? "Saving…" : "Save"}
-        </button>
-      </section>
+      <BusinessManager />
 
       <GoogleSheetsConnect />
 
