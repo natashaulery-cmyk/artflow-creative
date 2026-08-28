@@ -1,23 +1,4 @@
 {
-  "description": "Every 5 minutes, pulls the Inventory Pricing tab from the Google Sheets tracker into the app's InventoryCost records so the inventory list stays in sync with the spreadsheet.",
-  "name": "Sync Inventory",
-  "trigger": {
-    "condition": null,
-    "config": {
-      "trigger_type": "scheduled",
-      "events": [],
-      "schedule_mode": "recurring",
-      "cron_expression": "*/5 * * * *",
-      "one_time_date": null,
-      "timezone": "America/Indianapolis",
-      "interval_value": null,
-      "interval_unit": null,
-      "interval_anchor": null,
-      "ends_type": "never",
-      "ends_on_date": null,
-      "ends_after_count": null
-    }
-  },
   "definition": {
     "document": {
       "dsl": "1.0.0",
@@ -43,5 +24,24 @@
         }
       }
     ]
+  },
+  "description": "Every 30 minutes, pulls the Inventory Pricing tab from the Google Sheets tracker into the app's InventoryCost records so the inventory list stays in sync with the spreadsheet.",
+  "name": "Sync Inventory",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/30 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Indianapolis",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
   }
 }
