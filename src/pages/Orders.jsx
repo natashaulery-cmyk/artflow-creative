@@ -55,17 +55,13 @@ export default function Orders() {
     const keys = orders
       .map((o) => (o.sale_date || "").slice(0, 7))
       .filter((k) => /^\d{4}-\d{2}$/.test(k));
-    const thisYear = new Date().getFullYear();
-    let minYear = thisYear;
-    let maxYear = thisYear;
-    if (keys.length) {
-      const years = keys.map((k) => Number(k.slice(0, 4)));
-      minYear = Math.min(...years);
-      maxYear = Math.max(...years);
-    }
+    const now = new Date();
+    const endKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const [ey, em] = endKey.split("-").map(Number);
     const list = [];
-    for (let y = maxYear; y >= minYear; y--) {
-      for (let m = 12; m >= 1; m--) {
+    for (let y = 2026; y <= ey; y++) {
+      const mEnd = y === ey ? em : 12;
+      for (let m = 1; m <= mEnd; m++) {
         list.push(`${y}-${String(m).padStart(2, "0")}`);
       }
     }
