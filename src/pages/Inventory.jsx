@@ -184,7 +184,7 @@ export default function Inventory() {
                       <span className="text-[11px] text-foreground">{rec.size}</span>
                     )}
                   </div>
-                  <p className="font-heading text-xl truncate">{title}</p>
+                  <p className="font-heading text-xl truncate text-black">{title}</p>
                   <p className="text-xs text-foreground">
                     Base {formatMoney(rec.base_item_cost)} · Unit cost {formatMoney(unitCost)}
                   </p>
@@ -203,7 +203,7 @@ export default function Inventory() {
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase">
                     On Hand
                   </p>
-                  <p className="font-heading text-2xl">{qty}</p>
+                  <p className="font-heading text-2xl text-black">{qty}</p>
                   {out && (
                     <span className="text-xs font-semibold text-rose-600">Out of stock</span>
                   )}
