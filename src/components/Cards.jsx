@@ -17,7 +17,7 @@ export function StatCard({ tone, label, value, sub }) {
       <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
         {label}
       </p>
-      <p className="font-heading text-2xl mt-2 text-foreground leading-tight">{value}</p>
+      <p className="font-heading text-2xl mt-2 text-black leading-tight">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
