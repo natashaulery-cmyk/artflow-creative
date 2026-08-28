@@ -21,17 +21,36 @@ const categories = [
 
 export default function Expenses() {
   const { records } = useEntity("Expense", "-date");
+  const { records: inventoryCosts } = useEntity("InventoryCost", "size");
   const [filter, setFilter] = useState("All");
   const [formOpen, setFormOpen] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
+
+  const frameItems = useMemo(
+    () =>
+      inventoryCosts
+        .map((i) => ({
+          size: i.size,
+          qty: i.quantity_on_hand || 0,
+          unit: i.base_item_cost || 0,
+          total: +(((i.base_item_cost || 0) * (i.quantity_on_hand || 0)).toFixed(2)),
+        }))
+        .filter((f) => f.qty > 0),
+    [inventoryCosts]
+  );
+
+  const frameTotal = useMemo(
+    () => frameItems.reduce((s, f) => s + f.total, 0),
+    [frameItems]
+  );
 
   const filtered = useMemo(() => {
     return records.filter((e) => filter === "All" || e.category === filter);
   }, [records, filter]);
 
   const totalAll = useMemo(
-    () => records.reduce((s, e) => s + (e.amount || 0), 0),
-    [records]
+    () => records.reduce((s, e) => s + (e.amount || 0), 0) + frameTotal,
+    [records, frameTotal]
   );
 
   const grouped = useMemo(() => {
@@ -81,6 +100,35 @@ export default function Expenses() {
           </button>
         ))}
       </div>
+
+      {filter === "All" && frameItems.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h2 className="font-heading text-base">Inventory / Frames</h2>
+            <span className="text-sm text-muted-foreground">
+              {formatMoney(frameTotal)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {frameItems.map((f) => (
+              <div
+                key={f.size}
+                className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] flex items-center justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium truncate">Frames — {f.size}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {f.qty} on hand × {formatMoney(f.unit)}
+                  </p>
+                </div>
+                <div className="text-right ml-3 shrink-0">
+                  <p className="font-heading text-base">{formatMoney(f.total)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {grouped.length === 0 && <EmptyRow text="No expenses yet" />}
 
