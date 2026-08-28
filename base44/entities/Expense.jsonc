@@ -2,33 +2,52 @@
   "name": "Expense",
   "type": "object",
   "properties": {
-    "name": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Inventory / Frames",
+        "Printing Supplies",
+        "Packaging",
+        "Equipment",
+        "Office Expense",
+        "Software & Subscriptions",
+        "Phone / Internet",
+        "Advertising",
+        "Shipping",
+        "Other"
+      ]
+    },
+    "description": {
       "type": "string"
     },
     "amount": {
       "type": "number"
     },
-    "due_date": {
-      "type": "string",
-      "format": "date"
+    "deductible_percent": {
+      "type": "number",
+      "default": 100
     },
-    "recurrence": {
-      "type": "string",
-      "enum": [
-        "monthly",
-        "one-time"
-      ],
-      "default": "monthly"
+    "deductible_amount": {
+      "type": "number"
     },
-    "paid": {
-      "type": "boolean",
-      "default": false
+    "source": {
+      "type": "string"
+    },
+    "receipt_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
     }
   },
   "required": [
-    "name",
-    "amount",
-    "due_date",
-    "recurrence"
+    "date",
+    "category",
+    "description",
+    "amount"
   ]
 }

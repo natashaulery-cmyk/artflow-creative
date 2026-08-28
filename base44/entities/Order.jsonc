@@ -1,0 +1,65 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "sale_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "Vinted",
+        "Depop"
+      ]
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "size": {
+      "type": "string"
+    },
+    "unit_price": {
+      "type": "number"
+    },
+    "sale_total": {
+      "type": "number"
+    },
+    "buyer": {
+      "type": "string"
+    },
+    "source_email_id": {
+      "type": "string"
+    },
+    "base_item_cost": {
+      "type": "number"
+    },
+    "paper_ink_cost": {
+      "type": "number"
+    },
+    "packaging_cost": {
+      "type": "number"
+    },
+    "total_cost": {
+      "type": "number"
+    },
+    "estimated_profit": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "sale_date",
+    "platform",
+    "product_name",
+    "quantity",
+    "size",
+    "unit_price"
+  ]
+}

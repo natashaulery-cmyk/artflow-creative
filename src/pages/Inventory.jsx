@@ -1,90 +1,119 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { Minus, Plus, Pencil } from "lucide-react";
+import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
-import { Image } from "@/components/ui/image";
-
-const statusStyles = {
-  available: { bg: "pastel-mint", text: "text-emerald-700", label: "Available" },
-  sold: { bg: "pastel-peach", text: "text-rose-700", label: "Sold" },
-  reserved: { bg: "pastel-yellow", text: "text-amber-700", label: "Reserved" },
-};
+import { formatMoney } from "@/lib/orderCost";
+import { calculateUnitCost as calcUnit } from "@/lib/orderCost";
+import { toast } from "sonner";
+import InventoryEditSheet from "@/components/InventoryEditSheet";
 
 export default function Inventory() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { records, loading } = useEntity("InventoryCost", "size");
+  const [editRecord, setEditRecord] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await base44.entities.InventoryItem.list("-created_date", 100);
-        setItems(data);
-      } catch {
-        setItems([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const adjustQty = async (rec, delta) => {
+    const newQty = Math.max(0, (rec.quantity_on_hand || 0) + delta);
+    try {
+      await base44.entities.InventoryCost.update(rec.id, { quantity_on_hand: newQty });
+    } catch (e) {
+      toast.error("Could not update quantity");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <h1 className="font-heading text-[28px]">Inventory</h1>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-28 rounded-3xl bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="font-heading text-3xl text-foreground">Gallery</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{items.length} pieces in your collection</p>
+        <h1 className="font-heading text-[28px] leading-tight">Inventory</h1>
+        <p className="text-muted-foreground text-sm">Print & frame stock by size</p>
       </header>
 
-      {loading ? (
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="aspect-[3/4] rounded-3xl bg-muted animate-pulse" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="pastel-lavender rounded-3xl p-10 text-center">
-          <p className="text-muted-foreground text-sm">Your gallery is empty. Add artwork to start tracking your inventory.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {items.map((item, i) => {
-            const s = statusStyles[item.status] || statusStyles.available;
-            return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-              >
-                <Link to={`/inventory/${item.id}`} className="block">
-                  <div className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-muted">
-                    {item.image_url ? (
-                      <Image
-                        src={item.image_url}
-                        alt={item.title}
-                        fittingType="fill"
-                        className="w-full h-full"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center pastel-lavender">
-                        <span className="text-4xl">🎨</span>
-                      </div>
-                    )}
-                    <span
-                      className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-semibold ${s.bg} ${s.text}`}
-                    >
-                      {s.label}
-                    </span>
-                  </div>
-                  <div className="mt-2 px-1">
-                    <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
-                    <p className="font-heading text-base text-[hsl(var(--primary))]">${Number(item.price).toFixed(0)}</p>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+      <div className="space-y-3">
+        {records.map((rec) => {
+          const qty = rec.quantity_on_hand || 0;
+          const low = rec.low_stock_level || 0;
+          const out = qty <= 0;
+          const lowStock = !out && qty <= low;
+          const unitCost = calcUnit(rec);
+          const cardTone = out
+            ? "bg-red-50 border-rose-200"
+            : lowStock
+            ? "pastel-yellow border-amber-300"
+            : "bg-card border-[hsl(var(--border))]";
+
+          return (
+            <div
+              key={rec.id}
+              className={`${cardTone} rounded-3xl p-5 border transition-colors`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-heading text-xl">{rec.size}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Base {formatMoney(rec.base_item_cost)} · Unit cost {formatMoney(unitCost)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditRecord(rec)}
+                  className="w-9 h-9 rounded-full bg-white/70 flex items-center justify-center"
+                  aria-label="Edit"
+                >
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    On Hand
+                  </p>
+                  <p className="font-heading text-2xl">{qty}</p>
+                  {out && (
+                    <span className="text-xs font-semibold text-rose-600">Out of stock</span>
+                  )}
+                  {lowStock && (
+                    <span className="text-xs font-semibold text-amber-600">Low stock</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => adjustQty(rec, -1)}
+                    className="w-11 h-11 rounded-full bg-white border border-[hsl(var(--border))] flex items-center justify-center active:scale-90 transition-transform"
+                    aria-label="Decrease"
+                  >
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => adjustQty(rec, 1)}
+                    className="w-11 h-11 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center active:scale-90 transition-transform"
+                    aria-label="Increase"
+                  >
+                    <Plus className="w-5 h-5" strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <InventoryEditSheet
+        open={!!editRecord}
+        onClose={() => setEditRecord(null)}
+        record={editRecord}
+      />
     </div>
   );
 }

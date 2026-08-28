@@ -67,6 +67,15 @@
   }
 }
 
+@layer components {
+  .form-input {
+    @apply w-full h-14 px-4 rounded-2xl bg-card border border-input text-base focus:outline-none focus:ring-2 focus:ring-ring;
+  }
+  .form-textarea {
+    @apply w-full px-4 py-3 rounded-2xl bg-card border border-input text-base focus:outline-none focus:ring-2 focus:ring-ring;
+  }
+}
+
 @layer utilities {
   .pastel-lavender { background-color: hsl(var(--lavender)); }
   .pastel-mint { background-color: hsl(var(--mint)); }

@@ -12,11 +12,12 @@ import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Layout from '@/components/Layout';
-import Home from '@/pages/Home';
+import Dashboard from '@/pages/Dashboard';
+import Orders from '@/pages/Orders';
 import Inventory from '@/pages/Inventory';
-import InventoryDetail from '@/pages/InventoryDetail';
+import Expenses from '@/pages/Expenses';
+import Taxes from '@/pages/Taxes';
 import Reports from '@/pages/Reports';
-import Finances from '@/pages/Finances';
 import { Navigate } from 'react-router-dom';
 // Add page imports here
 
@@ -52,11 +53,12 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/orders" element={<Orders />} />
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/inventory/:id" element={<InventoryDetail />} />
+          <Route path="/expenses" element={<Expenses />} />
+          <Route path="/taxes" element={<Taxes />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/finances" element={<Finances />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

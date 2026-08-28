@@ -1,0 +1,36 @@
+{
+  "name": "InventoryCost",
+  "type": "object",
+  "properties": {
+    "size": {
+      "type": "string"
+    },
+    "base_item_cost": {
+      "type": "number"
+    },
+    "paper_ink_cost": {
+      "type": "number",
+      "default": 0.09
+    },
+    "packaging_cost": {
+      "type": "number",
+      "default": 0.4
+    },
+    "total_unit_cost": {
+      "type": "number"
+    },
+    "quantity_on_hand": {
+      "type": "number",
+      "default": 0
+    },
+    "low_stock_level": {
+      "type": "number",
+      "default": 5
+    }
+  },
+  "required": [
+    "size",
+    "base_item_cost",
+    "quantity_on_hand"
+  ]
+}
