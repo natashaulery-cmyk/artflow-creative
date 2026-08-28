@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import GoogleSheetsConnect from "@/components/GoogleSheetsConnect";
@@ -54,18 +55,7 @@ export default function Account() {
 
   return (
     <div className="space-y-5">
-      <header className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-card border border-[hsl(var(--border))] flex items-center justify-center"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h1 className="font-heading text-[28px] leading-tight">Account</h1>
-          <p className="text-muted-foreground text-sm">Profile & settings</p>
-        </div>
-      </header>
+      <PageHeader title="Account" subtitle="Profile & settings" onBack={() => navigate(-1)} />
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <div className="flex items-center gap-3">

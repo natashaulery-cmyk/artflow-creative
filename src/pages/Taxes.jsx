@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard } from "@/components/Cards";
+import PageHeader from "@/components/PageHeader";
 
 export default function Taxes() {
   const { records: orders } = useEntity("Order", "-sale_date");
@@ -23,10 +24,10 @@ export default function Taxes() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="font-heading text-[28px] leading-tight">Taxes</h1>
-        <p className="text-muted-foreground text-sm"><span className="text-foreground">{year}</span> tax overview</p>
-      </header>
+      <PageHeader
+        title="Taxes"
+        subtitle={<><span className="text-foreground">{year}</span> tax overview</>}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard

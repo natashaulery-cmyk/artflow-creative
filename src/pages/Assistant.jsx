@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ArrowLeft, Send, Sparkles } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -135,23 +136,12 @@ export default function Assistant() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-7rem)]">
-      <header className="flex items-center gap-3 mb-3">
-        <button
-          onClick={() => navigate("/")}
-          className="w-9 h-9 rounded-full bg-card border border-[hsl(var(--border))] flex items-center justify-center"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full pastel-lavender flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-[hsl(var(--primary))]" />
-          </div>
-          <div>
-            <h1 className="font-heading text-lg leading-tight">Business Advisor</h1>
-            <p className="text-xs text-muted-foreground">Ask about your sales, expenses & inventory</p>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        className="mb-3"
+        title="Business Advisor"
+        subtitle="Ask about your sales, expenses & inventory"
+        onBack={() => navigate("/")}
+      />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-2">
         {messages.length === 0 && (

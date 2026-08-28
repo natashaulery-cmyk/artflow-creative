@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { formatMoney, formatDate, currentMonthKey, monthShort } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
+import PageHeader from "@/components/PageHeader";
 import PullToRefresh from "@/components/PullToRefresh";
 import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
 import { toast } from "sonner";
@@ -94,10 +95,7 @@ export default function Orders() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
-      <header>
-        <h1 className="font-heading text-[28px] leading-tight">Orders</h1>
-        <p className="text-muted-foreground text-sm">Sold items across platforms</p>
-      </header>
+      <PageHeader title="Orders" subtitle="Sold items across platforms" />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         <button

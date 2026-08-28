@@ -6,6 +6,7 @@ import { EmptyRow } from "@/components/Cards";
 import ExpenseForm from "@/components/ExpenseForm";
 import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
+import PageHeader from "@/components/PageHeader";
 
 const categories = [
   "All",
@@ -79,24 +80,24 @@ export default function Expenses() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-[28px] leading-tight">Expenses</h1>
-          <p className="text-muted-foreground text-sm">Track business deductions</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <ExportButton orders={orders} expenses={records} />
-          <button
-            onClick={() => {
-              setEditRecord(null);
-              setFormOpen(true);
-            }}
-            className="shrink-0 h-11 px-4 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold flex items-center gap-2 active:scale-95 transition-transform"
-          >
-            <Plus className="w-5 h-5" strokeWidth={2.5} /> Add
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Expenses"
+        subtitle="Track business deductions"
+        right={
+          <div className="flex items-center gap-2">
+            <ExportButton orders={orders} expenses={records} />
+            <button
+              onClick={() => {
+                setEditRecord(null);
+                setFormOpen(true);
+              }}
+              className="shrink-0 h-11 px-4 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold flex items-center gap-2 active:scale-95 transition-transform"
+            >
+              <Plus className="w-5 h-5" strokeWidth={2.5} /> Add
+            </button>
+          </div>
+        }
+      />
 
       <div className="pastel-peach rounded-3xl p-5 border border-[hsl(var(--border))]">
         <p className="text-[11px] font-semibold text-black uppercase">

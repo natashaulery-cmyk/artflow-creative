@@ -4,6 +4,7 @@ import { useEntity } from "@/lib/useBusinessData";
 import { formatMoney, formatDate } from "@/lib/format";
 import ArtPieceForm from "@/components/ArtPieceForm";
 import PullToRefresh from "@/components/PullToRefresh";
+import PageHeader from "@/components/PageHeader";
 import { Image } from "@/components/ui/image";
 
 const tabs = ["All", "Available", "Sold"];
@@ -48,7 +49,7 @@ export default function Gallery() {
   if (loading) {
     return (
       <div className="space-y-5">
-        <h1 className="font-heading text-[28px]">Gallery</h1>
+        <PageHeader title="Gallery" />
         <div className="grid grid-cols-2 gap-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-52 rounded-3xl bg-muted animate-pulse" />
@@ -61,10 +62,7 @@ export default function Gallery() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
-      <header>
-        <h1 className="font-heading text-[28px] leading-tight">Gallery</h1>
-        <p className="text-muted-foreground text-sm">Your artwork collection</p>
-      </header>
+      <PageHeader title="Gallery" subtitle="Your artwork collection" />
 
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))]">

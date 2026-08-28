@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import PullToRefresh from "@/components/PullToRefresh";
 import ScheduleEventForm from "@/components/ScheduleEventForm";
+import PageHeader from "@/components/PageHeader";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
@@ -95,18 +96,18 @@ export default function Calendar() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={reload} />
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-[28px] leading-tight">Calendar</h1>
-          <p className="text-muted-foreground text-sm">Dates & schedule</p>
-        </div>
-        <button
-          onClick={() => openAdd(ymd(today))}
-          className="h-11 px-4 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center gap-2 text-sm font-semibold active:scale-[0.98] transition-transform"
-        >
-          <Plus className="w-4 h-4" /> Add
-        </button>
-      </header>
+      <PageHeader
+        title="Calendar"
+        subtitle="Dates & schedule"
+        right={
+          <button
+            onClick={() => openAdd(ymd(today))}
+            className="h-11 px-4 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center gap-2 text-sm font-semibold active:scale-[0.98] transition-transform"
+          >
+            <Plus className="w-4 h-4" /> Add
+          </button>
+        }
+      />
 
       <section className="bg-card rounded-3xl p-4 border border-[hsl(var(--border))]">
         <div className="flex items-center justify-between mb-3">
