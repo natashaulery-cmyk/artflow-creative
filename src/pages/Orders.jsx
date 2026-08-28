@@ -91,15 +91,15 @@ export default function Orders() {
       <div className="grid grid-cols-3 gap-2">
         <div className="pastel-lavender rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sales</p>
-          <p className="font-heading text-lg mt-1">{formatMoney(summary.sales)}</p>
+          <p className="font-heading text-lg mt-1 text-black">{formatMoney(summary.sales)}</p>
         </div>
         <div className="pastel-blue rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Orders</p>
-          <p className="font-heading text-lg mt-1">{summary.count}</p>
+          <p className="font-heading text-lg mt-1 text-black">{summary.count}</p>
         </div>
         <div className="pastel-mint rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Profit</p>
-          <p className="font-heading text-lg mt-1">{formatMoney(summary.profit)}</p>
+          <p className="font-heading text-lg mt-1 text-black">{formatMoney(summary.profit)}</p>
         </div>
       </div>
 
