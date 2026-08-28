@@ -152,19 +152,23 @@ export default function Orders() {
         >
           All months
         </button>
-        {months.map((m) => (
-          <button
-            key={m}
-            onClick={() => setMonthFilter(m)}
-            className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
-              monthFilter === m
-                ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {monthLabel(m)}
-          </button>
-        ))}
+        {months.map((m) => {
+          const active = monthFilter === m;
+          const lbl = monthLabel(m);
+          return (
+            <button
+              key={m}
+              onClick={() => setMonthFilter(m)}
+              className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+                active
+                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {lbl.slice(0, -5)}<span className={active ? "" : "text-foreground"}>{lbl.slice(-4)}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="space-y-2">

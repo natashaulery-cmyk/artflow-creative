@@ -123,7 +123,7 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
                       className={`px-3 h-10 rounded-full text-sm font-medium ${
                         form.size === s
                           ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                          : "bg-muted text-muted-foreground"
+                          : "bg-muted text-foreground"
                       }`}
                     >
                       {s}

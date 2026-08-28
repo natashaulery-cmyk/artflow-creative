@@ -152,7 +152,7 @@ export default function Inventory() {
                       {cat}
                     </span>
                     {rec.size && cat !== "Frame" && (
-                      <span className="text-[11px] text-muted-foreground">{rec.size}</span>
+                      <span className="text-[11px] text-foreground">{rec.size}</span>
                     )}
                   </div>
                   <p className="font-heading text-xl truncate">{title}</p>

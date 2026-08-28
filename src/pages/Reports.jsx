@@ -109,7 +109,11 @@ export default function Reports() {
                 : "bg-muted text-muted-foreground"
             }`}
           >
-            {p.label}
+            {p.key === "last3" ? (
+              <>Last <span className={period === p.key ? "" : "text-foreground"}>3</span> Months</>
+            ) : (
+              p.label
+            )}
           </button>
         ))}
       </div>
