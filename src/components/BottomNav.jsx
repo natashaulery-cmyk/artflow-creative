@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, ShoppingBag, Package, Receipt, Percent } from "lucide-react";
+import { Home, ShoppingBag, Package, Receipt, Percent, Sparkles } from "lucide-react";
 
 const items = [
   { label: "Home", to: "/", icon: Home },
@@ -8,6 +8,7 @@ const items = [
   { label: "Inventory", to: "/inventory", icon: Package },
   { label: "Expenses", to: "/expenses", icon: Receipt },
   { label: "Taxes", to: "/taxes", icon: Percent },
+  { label: "Advisor", to: "/assistant", icon: Sparkles },
 ];
 
 export default function BottomNav() {

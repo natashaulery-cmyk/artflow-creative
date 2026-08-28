@@ -18,6 +18,7 @@ import Inventory from '@/pages/Inventory';
 import Expenses from '@/pages/Expenses';
 import Taxes from '@/pages/Taxes';
 import Reports from '@/pages/Reports';
+import Assistant from '@/pages/Assistant';
 import { Navigate } from 'react-router-dom';
 // Add page imports here
 
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/taxes" element={<Taxes />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/assistant" element={<Assistant />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
