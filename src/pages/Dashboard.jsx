@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Plus, BarChart3, UserCircle } from "lucide-react";
+import { Plus, BarChart3, UserCircle, Image as ImageIcon } from "lucide-react";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/lib/format";
@@ -158,6 +158,19 @@ export default function Dashboard() {
           </Link>
         </div>
       </section>
+
+      <Link
+        to="/gallery"
+        className="flex items-center justify-between bg-card rounded-3xl p-5 border border-[hsl(var(--border))] active:scale-[0.99] transition-transform"
+      >
+        <div>
+          <p className="font-heading text-lg">My Gallery</p>
+          <p className="text-sm text-muted-foreground">Catalog your artwork pieces</p>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+          <ImageIcon className="w-5 h-5 text-[hsl(var(--primary))]" />
+        </div>
+      </Link>
 
       <section>
         <div className="flex items-center justify-between mb-3">
