@@ -1,7 +1,8 @@
 {
   "type": "googlesheets",
   "scopes": [
-    "https://www.googleapis.com/auth/spreadsheets.readonly",
-    "email"
+    "https://www.googleapis.com/auth/spreadsheets",
+    "email",
+    "https://www.googleapis.com/auth/spreadsheets.readonly"
   ]
 }
