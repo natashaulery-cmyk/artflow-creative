@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Search, Plus, RefreshCw, Download } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
-import { formatMoney, formatDate, currentMonthKey, monthLabel } from "@/lib/format";
+import { formatMoney, formatDate, currentMonthKey, monthShort } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
 import PullToRefresh from "@/components/PullToRefresh";
@@ -52,10 +52,24 @@ export default function Orders() {
   };
 
   const months = useMemo(() => {
-    const set = new Set(
-      orders.map((o) => (o.sale_date || "").slice(0, 7)).filter(Boolean)
-    );
-    return [...set].sort().reverse();
+    const keys = orders
+      .map((o) => (o.sale_date || "").slice(0, 7))
+      .filter(Boolean);
+    const thisYear = new Date().getFullYear();
+    let minYear = thisYear;
+    let maxYear = thisYear;
+    if (keys.length) {
+      const years = keys.map((k) => Number(k.slice(0, 4)));
+      minYear = Math.min(...years);
+      maxYear = Math.max(...years);
+    }
+    const list = [];
+    for (let y = maxYear; y >= minYear; y--) {
+      for (let m = 12; m >= 1; m--) {
+        list.push(`${y}-${String(m).padStart(2, "0")}`);
+      }
+    }
+    return list;
   }, [orders]);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
@@ -100,23 +114,19 @@ export default function Orders() {
         >
           All months
         </button>
-        {months.map((m) => {
-          const active = monthFilter === m;
-          const lbl = monthLabel(m);
-          return (
-            <button
-              key={m}
-              onClick={() => setMonthFilter(m)}
-              className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
-                active
-                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                  : "bg-muted text-foreground"
-              }`}
-            >
-              {lbl.slice(0, -5)}<span className={active ? "" : "text-foreground"}>{lbl.slice(-4)}</span>
-            </button>
-          );
-        })}
+        {months.map((m) => (
+          <button
+            key={m}
+            onClick={() => setMonthFilter(m)}
+            className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+              monthFilter === m
+                ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                : "bg-muted text-foreground"
+            }`}
+          >
+            {monthShort(m)}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-3 gap-2">

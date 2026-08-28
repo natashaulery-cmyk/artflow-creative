@@ -38,3 +38,12 @@ export function monthLabel(key) {
     year: "numeric",
   });
 }
+
+export function monthShort(key) {
+  if (!key) return "";
+  const [y, m] = key.split("-");
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+}
