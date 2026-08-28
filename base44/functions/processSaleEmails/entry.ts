@@ -1,12 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 
-// Processes Vinted/Depop sale emails and creates Order records.
-// Works two ways:
-//  - Webhook/manual: searches Gmail for recent sale emails.
-//  - Workflow trigger: receives messageIds in the payload.
-// Dedupes by platform + order_id + product_name. Calculates costs from
-// the matching InventoryCost record and decrements stock.
+// Processes Vinted/Depop sale emails and creates Order records for the signed-in
+// admin (the builder). Uses the builder's shared Gmail connection. Records are
+// created under the admin so per-user privacy keeps them visible to them.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -14,7 +11,6 @@ export default async function(req) {
 
     let messageIds = reqBody?.data?.new_message_ids || reqBody?.messageIds || [];
 
-    // Manual/admin invocation with no messageIds: search Gmail for recent sales.
     if (messageIds.length === 0) {
       const user = await base44.auth.me();
       if (!user || user.role !== 'admin') {
@@ -47,8 +43,8 @@ export default async function(req) {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
-    const inventoryCosts = await base44.asServiceRole.entities.InventoryCost.list('size', 100);
-    const existingOrders = await base44.asServiceRole.entities.Order.list('-created_date', 5000);
+    const inventoryCosts = await base44.entities.InventoryCost.list('size', 100);
+    const existingOrders = await base44.entities.Order.list('-created_date', 5000);
     const dupKey = (p, oid, pn) => `${p}|${oid || ''}|${pn}`;
     const seen = new Set(
       existingOrders.map((o) => dupKey(o.platform, o.order_id, o.product_name))
@@ -65,7 +61,6 @@ export default async function(req) {
       if (!msgRes.ok) continue;
       const msg = await msgRes.json();
 
-      // Decode email body (text/plain preferred)
       let emailBody = msg.snippet || '';
       const decodeB64 = (b64) => {
         const clean = (b64 || '').replace(/-/g, '+').replace(/_/g, '/');
@@ -88,7 +83,6 @@ export default async function(req) {
       const sender = headers.find((h) => h.name === 'From')?.value || '';
       const subject = headers.find((h) => h.name === 'Subject')?.value || '';
 
-      // LLM extracts structured order data from the email
       const prompt =
         'Extract order information from this Vinted or Depop sale notification email. ' +
         'ONLY extract if an item was actually SOLD (not listings, offers, likes, messages, or shipping-only emails). ' +
@@ -132,7 +126,7 @@ export default async function(req) {
       const inv = inventoryCosts.find((i) => i.size === order.size);
       const costs = calculateOrderCosts(order, inv);
 
-      await base44.asServiceRole.entities.Order.create({
+      await base44.entities.Order.create({
         sale_date: order.sale_date || new Date().toISOString().slice(0, 10),
         platform: order.platform === 'Depop' ? 'Depop' : 'Vinted',
         order_id: order.order_id || null,
@@ -150,7 +144,7 @@ export default async function(req) {
           0,
           (inv.quantity_on_hand || 0) - (Number(order.quantity) || 1)
         );
-        await base44.asServiceRole.entities.InventoryCost.update(inv.id, {
+        await base44.entities.InventoryCost.update(inv.id, {
           quantity_on_hand: newQty,
         });
       }

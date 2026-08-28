@@ -1,13 +1,9 @@
-// Shared inventory import logic for Affordable Art Co.
-// Used by the one-time importFromSheets function and the scheduled
-// syncInventoryFromSheets function. Reads a Google Sheets tab and upserts
-// InventoryCost records by size.
+// Shared inventory import logic. Reads a Google Sheets tab and upserts
+// InventoryCost records by size, scoped to the current user (the function
+// passes a user-scoped base44 client, so creates/updates are owned by them).
 import { calculateUnitCost } from './orderCost.js';
 
-// Import inventory items (print sizes + costs + on-hand quantities) from a
-// Google Sheets tab into InventoryCost records, upserting by size.
 export async function importInventory(base44, accessToken, spreadsheetId, sheetName) {
-  // Resolve the tab: explicit name, or the first one matching inventory/stock/cost.
   let tab = sheetName;
   if (!tab) {
     const metaRes = await fetch(
@@ -33,7 +29,6 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     return Response.json({ imported: 0, skipped: 0, message: 'Empty sheet' });
   }
 
-  // Find the header row (the row containing a "size" column).
   let headerRowIndex = 0;
   for (let i = 0; i < Math.min(6, rows.length); i++) {
     if (rows[i].some((c) => /size|print|item|piece/i.test(String(c || '')))) {
@@ -63,7 +58,7 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     return isNaN(n) ? fallback : n;
   };
 
-  const existing = await base44.asServiceRole.entities.InventoryCost.list('size', 200);
+  const existing = await base44.entities.InventoryCost.list('size', 200);
   const bySize = new Map(existing.map((e) => [String(e.size), e]));
 
   const toCreate = [];
@@ -100,12 +95,12 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
   let imported = 0;
   for (let i = 0; i < toCreate.length; i += 200) {
     const batch = toCreate.slice(i, i + 200);
-    await base44.asServiceRole.entities.InventoryCost.bulkCreate(batch);
+    await base44.entities.InventoryCost.bulkCreate(batch);
     imported += batch.length;
   }
   for (let i = 0; i < toUpdate.length; i += 200) {
     const batch = toUpdate.slice(i, i + 200);
-    await base44.asServiceRole.entities.InventoryCost.bulkUpdate(batch);
+    await base44.entities.InventoryCost.bulkUpdate(batch);
     imported += batch.length;
   }
 

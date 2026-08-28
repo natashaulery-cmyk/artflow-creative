@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Minus, Plus, Pencil } from "lucide-react";
+import { Minus, Plus, Pencil, RefreshCw } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
 import { formatMoney } from "@/lib/format";
@@ -14,8 +14,28 @@ export default function Inventory() {
   const [formOpen, setFormOpen] = useState(false);
   const [filter, setFilter] = useState("All");
   const [overrides, setOverrides] = useState({});
+  const [syncing, setSyncing] = useState(false);
 
   const refresh = async () => { await reloadInventory(); };
+
+  const syncFromSheet = async () => {
+    setSyncing(true);
+    try {
+      const me = await base44.auth.me();
+      const spreadsheetId = me?.spreadsheet_id || me?.data?.spreadsheet_id;
+      if (!spreadsheetId) {
+        toast.error("Add your Google Sheet in Account first");
+        return;
+      }
+      const res = await base44.functions.invoke("syncInventoryFromSheets", { spreadsheetId });
+      toast.success(`Synced ${res.data?.imported ?? 0} item(s) from your sheet`);
+      await reloadInventory();
+    } catch (e) {
+      toast.error("Sync failed — connect Google Sheets in Account first");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const adjustQty = async (rec, delta) => {
     const newQty = Math.max(0, (rec.quantity_on_hand || 0) + delta);
@@ -72,9 +92,18 @@ export default function Inventory() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
-      <header>
-        <h1 className="font-heading text-[28px] leading-tight">Inventory</h1>
-        <p className="text-muted-foreground text-sm">Stock across all categories</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-[28px] leading-tight">Inventory</h1>
+          <p className="text-muted-foreground text-sm">Stock across all categories</p>
+        </div>
+        <button
+          onClick={syncFromSheet}
+          disabled={syncing}
+          className="shrink-0 h-11 px-4 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center gap-2 text-sm font-medium disabled:opacity-60"
+        >
+          <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync
+        </button>
       </header>
 
       <div className="grid grid-cols-4 gap-2">

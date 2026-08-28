@@ -7,6 +7,10 @@
         "admin",
         "user"
       ]
+    },
+    "spreadsheet_id": {
+      "type": "string",
+      "description": "The Google Sheets spreadsheet this user syncs their business data with"
     }
   },
   "required": [

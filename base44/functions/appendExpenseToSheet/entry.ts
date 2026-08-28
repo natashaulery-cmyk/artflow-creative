@@ -1,10 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
-// Appends a newly created Expense record as a row in the "Expenses" tab of the
-// Google Sheets tracker. Config (spreadsheet) is hardcoded server-side. Invoked
-// by the "Sync Expenses to Sheets" workflow (payload { workflow: true, expense_id })
-// or manually by an admin for testing.
-const SPREADSHEET_ID = '1_GRVGcbkKvgB1B7FiQkCJxkZaQaegYPtx35i7dhav4k';
+// Per-user expense export. Appends a single expense (the current user's own)
+// as a row in the "Expenses" tab of their own Google Sheet. Called on demand
+// right after an expense is created.
 const SHEET_NAME = 'Expenses';
 const HEADERS = [
   'Date',
@@ -20,31 +19,33 @@ const HEADERS = [
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const reqBody = await req.json().catch(() => ({}));
-
-    // Workflow path carries no user, so skip the admin gate.
-    if (reqBody?.workflow !== true) {
-      const user = await base44.auth.me();
-      if (!user || user.role !== 'admin') {
-        return Response.json({ error: 'Admin only' }, { status: 403 });
-      }
+    const user = await base44.auth.me();
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
+    const reqBody = await req.json().catch(() => ({}));
     const expenseId = reqBody?.expense_id;
     if (!expenseId) {
       return Response.json({ error: 'expense_id required' }, { status: 400 });
     }
+    const spreadsheetId =
+      reqBody?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id;
+    if (!spreadsheetId) {
+      return Response.json({ error: 'No spreadsheet connected' }, { status: 400 });
+    }
 
-    const expense = await base44.asServiceRole.entities.Expense.get(expenseId);
+    const expense = await base44.entities.Expense.get(expenseId);
     if (!expense) {
       return Response.json({ error: 'Expense not found' }, { status: 404 });
     }
 
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlesheets');
+    const { accessToken } =
+      await base44.asServiceRole.connectors.getCurrentAppUserConnection(
+        GOOGLE_SHEETS_CONNECTOR_ID
+      );
 
-    // Ensure the Expenses tab exists; create it with a header row if missing.
     const metaRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties.title`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     if (!metaRes.ok) {
@@ -56,8 +57,8 @@ export default async function(req) {
     const meta = await metaRes.json();
     const tabs = (meta.sheets || []).map((s) => s.properties.title);
     if (!tabs.includes(SHEET_NAME)) {
-      const addRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
         {
           method: 'POST',
           headers: {
@@ -69,14 +70,8 @@ export default async function(req) {
           }),
         }
       );
-      if (!addRes.ok) {
-        return Response.json(
-          { error: 'Could not create tab: ' + (await addRes.text()) },
-          { status: 502 }
-        );
-      }
       await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
           SHEET_NAME
         )}!A1:append?valueInputOption=RAW`,
         {
@@ -102,7 +97,7 @@ export default async function(req) {
     ];
 
     const appendRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
         SHEET_NAME
       )}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       {

@@ -1,26 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { importInventory } from '../../shared/inventorySync.js';
+import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
-// One-time import of historical orders from the existing Google Sheets
-// sales tracker. Admin-only. Maps columns by header name, calculates costs
-// from InventoryCost records, and dedupes by platform + order_id + product_name.
+// Per-user Google Sheets import. Each authenticated user imports from their
+// own spreadsheet (saved on their account, or passed in). Orders are created
+// under the user, so per-user privacy keeps them visible only to them.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Admin only' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const reqBody = await req.json().catch(() => ({}));
-    const spreadsheetId = reqBody?.spreadsheetId;
+    const spreadsheetId =
+      reqBody?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id;
     const sheetName = reqBody?.sheetName;
     if (!spreadsheetId) {
-      return Response.json({ error: 'spreadsheetId required' }, { status: 400 });
+      return Response.json(
+        { error: 'No spreadsheet connected. Add your Google Sheet in Account.' },
+        { status: 400 }
+      );
     }
 
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlesheets');
+    const { accessToken } =
+      await base44.asServiceRole.connectors.getCurrentAppUserConnection(
+        GOOGLE_SHEETS_CONNECTOR_ID
+      );
     const mode = reqBody?.mode || 'orders';
 
     if (mode === 'discover') {
@@ -48,15 +56,10 @@ export default async function(req) {
     }
 
     const range = sheetName ? `${sheetName}!A:Z` : 'A:Z';
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-      range
-    )}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) {
-      return Response.json(
-        { error: 'Sheets API error: ' + (await res.text()) },
-        { status: 502 }
-      );
+      return Response.json({ error: 'Sheets API error: ' + (await res.text()) }, { status: 502 });
     }
     const data = await res.json();
     const rows = data.values || [];
@@ -64,7 +67,6 @@ export default async function(req) {
       return Response.json({ imported: 0, skipped: 0, message: 'Empty sheet' });
     }
 
-    // The sheet has a title row before the real headers — find the header row.
     let headerRowIndex = 0;
     for (let i = 0; i < Math.min(6, rows.length); i++) {
       if (rows[i].some((c) => /product name|sale date/i.test(String(c || '')))) {
@@ -72,9 +74,7 @@ export default async function(req) {
         break;
       }
     }
-    const headers = rows[headerRowIndex].map((h) =>
-      String(h || '').toLowerCase().trim()
-    );
+    const headers = rows[headerRowIndex].map((h) => String(h || '').toLowerCase().trim());
     const colIndex = (names) => {
       for (const n of names) {
         const i = headers.findIndex((h) => h.includes(n));
@@ -93,22 +93,16 @@ export default async function(req) {
       orderId: colIndex(['order', 'order_id', 'id']),
     };
 
-    const inventoryCosts = await base44.asServiceRole.entities.InventoryCost.list('size', 100);
-    const existing = await base44.asServiceRole.entities.Order.list('-created_date', 5000);
+    const inventoryCosts = await base44.entities.InventoryCost.list('size', 100);
+    const existing = await base44.entities.Order.list('-created_date', 5000);
     const dupKey = (p, oid, pn) => `${p}|${oid || ''}|${pn}`;
-    const seen = new Set(
-      existing.map((o) => dupKey(o.platform, o.order_id, o.product_name))
-    );
+    const seen = new Set(existing.map((o) => dupKey(o.platform, o.order_id, o.product_name)));
 
     const normalizeDate = (v) => {
       if (!v) return new Date().toISOString().slice(0, 10);
       const s = String(v).trim();
       const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if (m) {
-        return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(
-          m[2]
-        ).padStart(2, '0')}`;
-      }
+      if (m) return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
       const d = new Date(s);
       if (isNaN(d)) return new Date().toISOString().slice(0, 10);
       return d.toISOString().slice(0, 10);
@@ -157,7 +151,7 @@ export default async function(req) {
     let imported = 0;
     for (let i = 0; i < toCreate.length; i += 200) {
       const batch = toCreate.slice(i, i + 200);
-      await base44.asServiceRole.entities.Order.bulkCreate(batch);
+      await base44.entities.Order.bulkCreate(batch);
       imported += batch.length;
     }
 

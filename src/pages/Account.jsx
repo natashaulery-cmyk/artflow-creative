@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Trash2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import GoogleSheetsConnect from "@/components/GoogleSheetsConnect";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -61,6 +62,8 @@ export default function Account() {
           </div>
         </div>
       </section>
+
+      <GoogleSheetsConnect />
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-1">Sign out</h2>

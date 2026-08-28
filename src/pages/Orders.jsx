@@ -32,16 +32,19 @@ export default function Orders() {
   };
 
   const importSheets = async () => {
-    const url = window.prompt("Paste your Google Sheets URL:");
-    if (!url) return;
-    const m = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    const spreadsheetId = m ? m[1] : url.trim();
     setSyncing(true);
     try {
+      const me = await base44.auth.me();
+      const spreadsheetId = me?.spreadsheet_id || me?.data?.spreadsheet_id;
+      if (!spreadsheetId) {
+        toast.error("Add your Google Sheet in Account first");
+        return;
+      }
       const res = await base44.functions.invoke("importFromSheets", { spreadsheetId });
       toast.success(`Imported ${res.data?.imported || 0} order(s)`);
+      await reloadOrders();
     } catch (e) {
-      toast.error("Import failed — connect Google Sheets first");
+      toast.error("Import failed — connect Google Sheets in Account first");
     } finally {
       setSyncing(false);
     }

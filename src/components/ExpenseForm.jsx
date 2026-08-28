@@ -85,8 +85,11 @@ export default function ExpenseForm({ open, onClose, record }) {
         await base44.entities.Expense.update(record.id, payload);
         toast.success("Expense updated");
       } else {
-        await base44.entities.Expense.create(payload);
+        const created = await base44.entities.Expense.create(payload);
         toast.success("Expense added");
+        base44.functions
+          .invoke("appendExpenseToSheet", { expense_id: created?.id })
+          .catch(() => {});
       }
       onClose();
     } catch (err) {
