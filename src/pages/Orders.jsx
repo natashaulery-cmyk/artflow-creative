@@ -185,7 +185,7 @@ export default function Orders() {
                 className={`shrink-0 ml-2 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                   o.platform === "Vinted"
                     ? "pastel-lavender text-[hsl(var(--primary))]"
-                    : "pastel-mint text-emerald-700"
+                    : "pastel-mint text-slate-600"
                 }`}
               >
                 {o.platform}
@@ -202,7 +202,7 @@ export default function Orders() {
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase">Profit</p>
-                <p className="font-heading text-sm text-emerald-600">
+                <p className="font-heading text-sm text-foreground">
                   {formatMoney(o.estimated_profit)}
                 </p>
               </div>

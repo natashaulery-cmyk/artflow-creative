@@ -40,7 +40,7 @@ export function PlatformBar({ label, value, max, color }) {
     <div className="mb-3 last:mb-0">
       <div className="flex justify-between text-sm mb-1.5">
         <span className="font-medium text-foreground">{label}</span>
-        <span className="text-muted-foreground">{formatMoney(value)}</span>
+        <span className="text-foreground">{formatMoney(value)}</span>
       </div>
       <div className="h-3 rounded-full bg-muted overflow-hidden">
         <div

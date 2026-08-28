@@ -132,7 +132,7 @@ export default function Dashboard() {
             label="Depop"
             value={calc.depopSales}
             max={maxPlatform}
-            color="bg-emerald-400"
+            color="bg-slate-400"
           />
         </Link>
       </section>
@@ -178,7 +178,7 @@ export default function Dashboard() {
               </div>
               <div className="text-right ml-3 shrink-0">
                 <p className="font-heading text-base">{formatMoney(o.sale_total)}</p>
-                <p className="text-xs text-emerald-600">
+                <p className="text-xs text-foreground">
                   {formatMoney(o.estimated_profit)} profit
                 </p>
               </div>

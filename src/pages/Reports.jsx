@@ -153,7 +153,7 @@ export default function Reports() {
           label="Depop"
           value={calc.depopSales}
           max={maxPlatform}
-          color="bg-emerald-400"
+          color="bg-slate-400"
         />
       </section>
 
