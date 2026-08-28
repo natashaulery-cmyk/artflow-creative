@@ -5,6 +5,8 @@ import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/lib/format";
 import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 
+const cardLink = "block active:scale-95 transition-transform";
+
 export default function Dashboard() {
   const { records: orders } = useEntity("Order", "-created_date");
   const { records: expenses } = useEntity("Expense", "-created_date");
@@ -91,28 +93,34 @@ export default function Dashboard() {
             sub="tap to view expenses"
           />
         </Link>
-        <StatCard
-          tone="yellow"
-          label="Tax Reserve"
-          value={formatMoney(calc.taxReserve)}
-          sub={`${taxRate}% set aside`}
-        />
+        <Link to="/taxes" className={cardLink}>
+          <StatCard
+            tone="yellow"
+            label="Tax Reserve"
+            value={formatMoney(calc.taxReserve)}
+            sub={`${taxRate}% set aside · tap to view`}
+          />
+        </Link>
       </div>
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-4">Sales by Platform</h2>
-        <PlatformBar
-          label="Vinted"
-          value={calc.vintedSales}
-          max={maxPlatform}
-          color="bg-[hsl(var(--primary))]"
-        />
-        <PlatformBar
-          label="Depop"
-          value={calc.depopSales}
-          max={maxPlatform}
-          color="bg-emerald-400"
-        />
+        <Link to="/orders" className="block">
+          <PlatformBar
+            label="Vinted"
+            value={calc.vintedSales}
+            max={maxPlatform}
+            color="bg-[hsl(var(--primary))]"
+          />
+        </Link>
+        <Link to="/orders" className="block">
+          <PlatformBar
+            label="Depop"
+            value={calc.depopSales}
+            max={maxPlatform}
+            color="bg-emerald-400"
+          />
+        </Link>
       </section>
 
       <section>
@@ -121,9 +129,15 @@ export default function Dashboard() {
           <Link to="/orders?month=All" className="block">
             <MiniCard label="All-Time Sales" value={formatMoneyShort(calc.allTimeSales)} />
           </Link>
-          <MiniCard label="Items Sold" value={String(calc.itemsSold)} />
-          <MiniCard label="Order Costs" value={formatMoneyShort(calc.orderCosts)} />
-          <MiniCard label="Taxable Profit" value={formatMoneyShort(calc.taxableProfitAll)} />
+          <Link to="/orders?month=All" className={cardLink}>
+            <MiniCard label="Items Sold" value={String(calc.itemsSold)} />
+          </Link>
+          <Link to="/inventory" className={cardLink}>
+            <MiniCard label="Order Costs" value={formatMoneyShort(calc.orderCosts)} />
+          </Link>
+          <Link to="/taxes" className={cardLink}>
+            <MiniCard label="Taxable Profit" value={formatMoneyShort(calc.taxableProfitAll)} />
+          </Link>
         </div>
       </section>
 
@@ -137,9 +151,10 @@ export default function Dashboard() {
         <div className="space-y-2">
           {recentOrders.length === 0 && <EmptyRow text="No orders yet" />}
           {recentOrders.map((o) => (
-            <div
+            <Link
               key={o.id}
-              className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] flex items-center justify-between"
+              to="/orders"
+              className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] flex items-center justify-between active:scale-[0.99] transition-transform"
             >
               <div className="min-w-0">
                 <p className="font-medium truncate">{o.product_name}</p>
@@ -153,7 +168,7 @@ export default function Dashboard() {
                   {formatMoney(o.estimated_profit)} profit
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -168,9 +183,10 @@ export default function Dashboard() {
         <div className="space-y-2">
           {recentExpenses.length === 0 && <EmptyRow text="No expenses yet" />}
           {recentExpenses.map((e) => (
-            <div
+            <Link
               key={e.id}
-              className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] flex items-center justify-between"
+              to="/expenses"
+              className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] flex items-center justify-between active:scale-[0.99] transition-transform"
             >
               <div className="min-w-0">
                 <p className="font-medium truncate">{e.description}</p>
@@ -179,7 +195,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <p className="font-heading text-base ml-3 shrink-0">{formatMoney(e.amount)}</p>
-            </div>
+            </Link>
           ))}
         </div>
         <Link
