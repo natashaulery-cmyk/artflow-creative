@@ -54,7 +54,7 @@ export default function Orders() {
   const months = useMemo(() => {
     const keys = orders
       .map((o) => (o.sale_date || "").slice(0, 7))
-      .filter(Boolean);
+      .filter((k) => /^\d{4}-\d{2}$/.test(k));
     const thisYear = new Date().getFullYear();
     let minYear = thisYear;
     let maxYear = thisYear;
