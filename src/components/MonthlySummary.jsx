@@ -30,7 +30,14 @@ export default function MonthlySummary({ orders, expenses }) {
   const [month, setMonth] = useState(currentMonthKey());
 
   const months = useMemo(() => {
-    const set = new Set([currentMonthKey()]);
+    const set = new Set();
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), i, 1);
+      set.add(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      );
+    }
     orders.forEach((o) => {
       const k = (o.sale_date || "").slice(0, 7);
       if (k) set.add(k);
