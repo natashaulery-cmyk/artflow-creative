@@ -5,6 +5,7 @@ import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import MonthlySummary from "@/components/MonthlySummary";
+import TaxLiabilityTracker from "@/components/TaxLiabilityTracker";
 import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
 import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
@@ -104,6 +105,8 @@ export default function Reports() {
       </header>
 
       <MonthlySummary orders={orders} expenses={expenses} />
+
+      <TaxLiabilityTracker orders={orders} taxRate={taxRate} />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         {periods.map((p) => (
