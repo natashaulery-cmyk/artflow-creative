@@ -37,7 +37,17 @@ export default async function(req) {
       return Response.json({ imported: 0, skipped: 0, message: 'Empty sheet' });
     }
 
-    const headers = rows[0].map((h) => String(h || '').toLowerCase().trim());
+    // The sheet has a title row before the real headers — find the header row.
+    let headerRowIndex = 0;
+    for (let i = 0; i < Math.min(6, rows.length); i++) {
+      if (rows[i].some((c) => /product name|sale date/i.test(String(c || '')))) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+    const headers = rows[headerRowIndex].map((h) =>
+      String(h || '').toLowerCase().trim()
+    );
     const colIndex = (names) => {
       for (const n of names) {
         const i = headers.findIndex((h) => h.includes(n));
@@ -65,15 +75,22 @@ export default async function(req) {
 
     const normalizeDate = (v) => {
       if (!v) return new Date().toISOString().slice(0, 10);
-      const d = new Date(v);
+      const s = String(v).trim();
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(
+          m[2]
+        ).padStart(2, '0')}`;
+      }
+      const d = new Date(s);
       if (isNaN(d)) return new Date().toISOString().slice(0, 10);
       return d.toISOString().slice(0, 10);
     };
 
-    let imported = 0;
     let skipped = 0;
+    const toCreate = [];
 
-    for (let r = 1; r < rows.length; r++) {
+    for (let r = headerRowIndex + 1; r < rows.length; r++) {
       const row = rows[r];
       const product = idx.product >= 0 ? row[idx.product] : null;
       if (!product) continue;
@@ -96,7 +113,7 @@ export default async function(req) {
       const inv = inventoryCosts.find((i) => i.size === size);
       const costs = calculateOrderCosts({ quantity, size, unit_price }, inv);
 
-      await base44.asServiceRole.entities.Order.create({
+      toCreate.push({
         sale_date,
         platform,
         order_id,
@@ -108,10 +125,20 @@ export default async function(req) {
         ...costs,
       });
       seen.add(key);
-      imported++;
     }
 
-    return Response.json({ imported, skipped, total: rows.length - 1 });
+    let imported = 0;
+    for (let i = 0; i < toCreate.length; i += 200) {
+      const batch = toCreate.slice(i, i + 200);
+      await base44.asServiceRole.entities.Order.bulkCreate(batch);
+      imported += batch.length;
+    }
+
+    return Response.json({
+      imported,
+      skipped,
+      total: rows.length - headerRowIndex - 1,
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
