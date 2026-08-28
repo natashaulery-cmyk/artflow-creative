@@ -13,7 +13,7 @@ export default function Logo({ size = 36, className = "" }) {
     >
       <img
         src={LOGO_URL}
-        alt="ArtFlow"
+        alt="Art Flow Creative"
         draggable={false}
         style={{ width: "86%", height: "86%", objectFit: "contain" }}
       />
