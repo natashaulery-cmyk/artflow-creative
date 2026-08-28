@@ -3,11 +3,13 @@ import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard } from "@/components/Cards";
 import PageHeader from "@/components/PageHeader";
+import { useNavigate } from "react-router-dom";
 
 export default function Taxes() {
   const { records: orders } = useEntity("Order", "-sale_date");
   const { records: expenses } = useEntity("Expense", "-date");
   const [rate, setRate] = useTaxRate();
+  const navigate = useNavigate();
 
   const year = new Date().getFullYear();
 
@@ -27,6 +29,7 @@ export default function Taxes() {
       <PageHeader
         title="Taxes"
         subtitle={<><span className="text-foreground">{year}</span> tax overview</>}
+        onBack={() => navigate(-1)}
       />
 
       <div className="grid grid-cols-2 gap-3">

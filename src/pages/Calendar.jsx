@@ -4,6 +4,7 @@ import { useEntity } from "@/lib/useBusinessData";
 import PullToRefresh from "@/components/PullToRefresh";
 import ScheduleEventForm from "@/components/ScheduleEventForm";
 import PageHeader from "@/components/PageHeader";
+import { useNavigate } from "react-router-dom";
 import { useModalRoute } from "@/hooks/useModalRoute";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
@@ -38,6 +39,7 @@ function dayNum(key) {
 
 export default function Calendar() {
   const { records, loading, reload } = useEntity("ScheduleEvent", "date");
+  const navigate = useNavigate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -100,6 +102,7 @@ export default function Calendar() {
       <PageHeader
         title="Calendar"
         subtitle="Dates & schedule"
+        onBack={() => navigate(-1)}
         right={
           <button
             onClick={() => openAdd(ymd(today))}

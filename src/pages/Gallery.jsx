@@ -5,6 +5,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import ArtPieceForm from "@/components/ArtPieceForm";
 import PullToRefresh from "@/components/PullToRefresh";
 import PageHeader from "@/components/PageHeader";
+import { useNavigate } from "react-router-dom";
 import { useModalRoute } from "@/hooks/useModalRoute";
 import { Image } from "@/components/ui/image";
 
@@ -12,6 +13,7 @@ const tabs = ["All", "Available", "Sold"];
 
 export default function Gallery() {
   const { records, loading, reload } = useEntity("ArtPiece", "-created_date");
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [mediumFilter, setMediumFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -73,7 +75,11 @@ export default function Gallery() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
-      <PageHeader title="Gallery" subtitle="Your artwork collection" />
+      <PageHeader
+        title="Gallery"
+        subtitle="Your artwork collection"
+        onBack={() => navigate(-1)}
+      />
 
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))]">

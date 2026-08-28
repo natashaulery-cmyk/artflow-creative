@@ -6,10 +6,12 @@ import { EmptyRow } from "@/components/Cards";
 import MileageForm from "@/components/MileageForm";
 import PullToRefresh from "@/components/PullToRefresh";
 import PageHeader from "@/components/PageHeader";
+import { useNavigate } from "react-router-dom";
 import { useModalRoute } from "@/hooks/useModalRoute";
 
 export default function Mileage() {
   const { records, reload } = useEntity("MileageLog", "-date");
+  const navigate = useNavigate();
   const refresh = async () => { await reload(); };
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [editRecord, setEditRecord] = useState(null);
@@ -55,6 +57,7 @@ export default function Mileage() {
       <PageHeader
         title="Mileage"
         subtitle="Log business drives"
+        onBack={() => navigate(-1)}
         right={
           <button
             onClick={add}
