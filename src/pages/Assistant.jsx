@@ -94,17 +94,21 @@ export default function Assistant() {
   useEffect(() => {
     let conv;
     (async () => {
-      const list = base44.agents.listConversations({ agent_name: "business_advisor" });
-      if (list && list.length > 0) {
-        conv = list[0];
-      } else {
-        conv = base44.agents.createConversation({
-          agent_name: "business_advisor",
-          metadata: { name: "Business Advisor" },
-        });
+      try {
+        const list = await base44.agents.listConversations({ agent_name: "business_advisor" });
+        if (Array.isArray(list) && list.length > 0) {
+          conv = list[0];
+        } else {
+          conv = await base44.agents.createConversation({
+            agent_name: "business_advisor",
+            metadata: { name: "Business Advisor" },
+          });
+        }
+        setConversation(conv);
+        setMessages(conv.messages || []);
+      } catch (e) {
+        toast({ title: "Couldn't open advisor", description: e.message, variant: "destructive" });
       }
-      setConversation(conv);
-      setMessages(conv.messages || []);
     })();
   }, []);
 
