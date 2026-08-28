@@ -14,7 +14,7 @@ export default function Logo({ size = 36, className = "" }) {
       <Image
         src={LOGO_URL}
         alt="ArtFlow"
-        fittingType="fill"
+        fittingType="fit"
         className="w-full h-full"
       />
     </div>
