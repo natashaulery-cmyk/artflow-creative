@@ -5,6 +5,7 @@ import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import MonthlySummary from "@/components/MonthlySummary";
+import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
 
 const cardLink = "block active:scale-95 transition-transform";
@@ -96,6 +97,9 @@ export default function Reports() {
         <div>
           <h1 className="font-heading text-[28px] leading-tight">Reports</h1>
           <p className="text-muted-foreground text-sm">Performance over time</p>
+        </div>
+        <div className="ml-auto">
+          <ExportButton orders={orders} expenses={expenses} />
         </div>
       </header>
 
