@@ -10,6 +10,7 @@ import {
   Calendar as CalendarIcon,
   Image as ImageIcon,
   Percent,
+  Car,
 } from "lucide-react";
 import {
   Drawer,
@@ -29,6 +30,7 @@ const primary = [
 const more = [
   { label: "Gallery", to: "/gallery", icon: ImageIcon },
   { label: "Calendar", to: "/calendar", icon: CalendarIcon },
+  { label: "Mileage", to: "/mileage", icon: Car },
   { label: "Taxes", to: "/taxes", icon: Percent },
   { label: "Advisor", to: "/assistant", icon: Sparkles },
 ];

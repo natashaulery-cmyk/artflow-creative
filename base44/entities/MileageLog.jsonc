@@ -1,0 +1,49 @@
+{
+  "name": "MileageLog",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "destination": {
+      "type": "string",
+      "description": "Where you drove"
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Business reason for the trip"
+    },
+    "miles": {
+      "type": "number"
+    },
+    "rate": {
+      "type": "number",
+      "default": 0.7,
+      "description": "Per-mile deduction rate in dollars"
+    },
+    "deduction": {
+      "type": "number",
+      "description": "miles \u00d7 rate"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "date",
+    "destination",
+    "miles"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

@@ -19,6 +19,7 @@ import { ThemeProvider } from "next-themes";
 import Account from '@/pages/Account';
 import Calendar from '@/pages/Calendar';
 import Gallery from '@/pages/Gallery';
+import Mileage from '@/pages/Mileage';
 // Add page imports here
 
 const TabShell = () => null;
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
           <Route path="/account" element={<Account />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/mileage" element={<Mileage />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
