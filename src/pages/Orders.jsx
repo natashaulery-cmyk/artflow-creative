@@ -138,7 +138,7 @@ export default function Orders() {
             className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
               platformFilter === p
                 ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                : "bg-muted text-muted-foreground"
+                : "bg-muted text-foreground"
             }`}
           >
             {p}
@@ -150,7 +150,7 @@ export default function Orders() {
           className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
             monthFilter === "All"
               ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-              : "bg-muted text-muted-foreground"
+              : "bg-muted text-foreground"
           }`}
         >
           All months
@@ -165,7 +165,7 @@ export default function Orders() {
               className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
                 active
                   ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-foreground"
               }`}
             >
               {lbl.slice(0, -5)}<span className={active ? "" : "text-foreground"}>{lbl.slice(-4)}</span>
