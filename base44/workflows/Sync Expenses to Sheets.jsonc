@@ -1,0 +1,41 @@
+{
+  "name": "Sync Expenses to Sheets",
+  "description": "When a new expense is added, appends a row to the Expenses tab in the Google Sheets tracker so the spreadsheet stays in sync.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "Expense",
+      "events": [
+        "create"
+      ]
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "sync_expenses_to_sheets",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "append_expense": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "appendExpenseToSheet",
+            "args": {
+              "workflow": true,
+              "expense_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Append expense to Google Sheet",
+            "description": "Adds the new expense row to the Expenses tab"
+          }
+        }
+      }
+    ]
+  }
+}
