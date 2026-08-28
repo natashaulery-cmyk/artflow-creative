@@ -89,6 +89,36 @@ export default function Orders() {
         <p className="text-muted-foreground text-sm">Sold items across platforms</p>
       </header>
 
+      <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+        <button
+          onClick={() => setMonthFilter("All")}
+          className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+            monthFilter === "All"
+              ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+              : "bg-muted text-foreground"
+          }`}
+        >
+          All months
+        </button>
+        {months.map((m) => {
+          const active = monthFilter === m;
+          const lbl = monthLabel(m);
+          return (
+            <button
+              key={m}
+              onClick={() => setMonthFilter(m)}
+              className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+                active
+                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                  : "bg-muted text-foreground"
+              }`}
+            >
+              {lbl.slice(0, -5)}<span className={active ? "" : "text-foreground"}>{lbl.slice(-4)}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-3 gap-2">
         <div className="pastel-lavender rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sales</p>
@@ -145,34 +175,6 @@ export default function Orders() {
             {p}
           </button>
         ))}
-        <div className="w-px bg-[hsl(var(--border))] mx-1 my-1" />
-        <button
-          onClick={() => setMonthFilter("All")}
-          className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
-            monthFilter === "All"
-              ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-              : "bg-muted text-foreground"
-          }`}
-        >
-          All months
-        </button>
-        {months.map((m) => {
-          const active = monthFilter === m;
-          const lbl = monthLabel(m);
-          return (
-            <button
-              key={m}
-              onClick={() => setMonthFilter(m)}
-              className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
-                active
-                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                  : "bg-muted text-foreground"
-              }`}
-            >
-              {lbl.slice(0, -5)}<span className={active ? "" : "text-foreground"}>{lbl.slice(-4)}</span>
-            </button>
-          );
-        })}
       </div>
 
       <div className="space-y-2">
