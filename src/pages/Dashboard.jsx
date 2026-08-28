@@ -177,7 +177,7 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <p className="font-medium truncate">{o.product_name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {o.platform} · {formatDate(o.sale_date)}
+                  {o.platform} · <span className="text-foreground">{formatDate(o.sale_date)}</span>
                 </p>
               </div>
               <div className="text-right ml-3 shrink-0">
@@ -209,7 +209,7 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <p className="font-medium truncate">{e.description}</p>
                 <p className="text-xs text-muted-foreground">
-                  {e.category} · {formatDate(e.date)}
+                  {e.category} · <span className="text-foreground">{formatDate(e.date)}</span>
                 </p>
               </div>
               <p className="font-heading text-base ml-3 shrink-0">{formatMoney(e.amount)}</p>

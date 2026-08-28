@@ -133,7 +133,7 @@ export default function Expenses() {
                 <div className="min-w-0">
                   <p className="font-medium truncate">Frames — {f.size}</p>
                   <p className="text-xs text-muted-foreground">
-                    {f.qty} on hand × {formatMoney(f.unit)}
+                    <span className="text-foreground">{f.qty}</span> on hand × <span className="text-foreground">{formatMoney(f.unit)}</span>
                   </p>
                 </div>
                 <div className="text-right ml-3 shrink-0">
@@ -165,7 +165,7 @@ export default function Expenses() {
                 <div className="min-w-0">
                   <p className="font-medium truncate">{e.description}</p>
                   <p className="text-xs text-muted-foreground">
-                    {e.category} · {formatDate(e.date)}
+                    {e.category} · <span className="text-foreground">{formatDate(e.date)}</span>
                   </p>
                 </div>
                 <div className="text-right ml-3 shrink-0">

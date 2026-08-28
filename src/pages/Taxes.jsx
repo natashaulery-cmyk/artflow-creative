@@ -25,7 +25,7 @@ export default function Taxes() {
     <div className="space-y-5">
       <header>
         <h1 className="font-heading text-[28px] leading-tight">Taxes</h1>
-        <p className="text-muted-foreground text-sm">{year} tax overview</p>
+        <p className="text-muted-foreground text-sm"><span className="text-foreground">{year}</span> tax overview</p>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
