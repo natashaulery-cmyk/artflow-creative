@@ -45,6 +45,9 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     return -1;
   };
   const idx = {
+    name: colIndex(['name', 'item', 'piece', 'title', 'product', 'description']),
+    category: colIndex(['category', 'type', 'kind']),
+    image: colIndex(['image', 'photo', 'picture', 'image_url', 'link', 'url']),
     size: colIndex(['size', 'print', 'dimensions']),
     base: colIndex(['base', 'base_item', 'item cost', 'cost', 'frame']),
     paperInk: colIndex(['paper', 'ink', 'paper_ink', 'material']),
@@ -58,8 +61,9 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     return isNaN(n) ? fallback : n;
   };
 
+  const validCats = ['Frame', 'Print', 'Supply', 'Packaging', 'Other'];
   const existing = await base44.entities.InventoryCost.list('size', 200);
-  const bySize = new Map(existing.map((e) => [String(e.size), e]));
+  const byKey = new Map(existing.map((e) => [String(e.name || e.size || ''), e]));
 
   const toCreate = [];
   const toUpdate = [];
@@ -67,28 +71,36 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
 
   for (let r = headerRowIndex + 1; r < rows.length; r++) {
     const row = rows[r];
-    const sizeRaw = idx.size >= 0 ? row[idx.size] : null;
-    if (!sizeRaw || !String(sizeRaw).trim()) {
+    const name = idx.name >= 0 ? String(row[idx.name] || '').trim() : '';
+    const size = idx.size >= 0 ? String(row[idx.size] || '').trim() : '';
+    const key = name || size;
+    if (!key) {
       skipped++;
       continue;
     }
-    const size = String(sizeRaw).trim();
+    const catRaw = idx.category >= 0 ? String(row[idx.category] || '').trim() : '';
+    const catMatch = validCats.find((c) => c.toLowerCase() === catRaw.toLowerCase());
     const record = {
-      size,
       base_item_cost: num(idx.base >= 0 ? row[idx.base] : 0),
       paper_ink_cost: idx.paperInk >= 0 ? num(row[idx.paperInk], 0.09) : 0.09,
       packaging_cost: idx.packaging >= 0 ? num(row[idx.packaging], 0.4) : 0.4,
       quantity_on_hand: num(idx.qty >= 0 ? row[idx.qty] : 0),
       low_stock_level: idx.low >= 0 ? num(row[idx.low], 5) : 5,
     };
+    if (name) record.name = name;
+    if (size) record.size = size;
+    record.category = catMatch || 'Frame';
+    if (idx.image >= 0 && row[idx.image]) {
+      record.image_url = String(row[idx.image]).trim();
+    }
     record.total_unit_cost = calculateUnitCost(record);
 
-    const prev = bySize.get(size);
+    const prev = byKey.get(key);
     if (prev) {
       toUpdate.push({ id: prev.id, ...record });
     } else {
       toCreate.push(record);
-      bySize.set(size, { id: 'pending' });
+      byKey.set(key, { id: 'pending' });
     }
   }
 
