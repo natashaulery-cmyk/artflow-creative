@@ -10,8 +10,9 @@ import { toast } from "sonner";
 export default function Orders() {
   const { records: orders } = useEntity("Order", "-sale_date");
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
+  const initialMonth = new URLSearchParams(window.location.search).get("month");
   const [platformFilter, setPlatformFilter] = useState("All");
-  const [monthFilter, setMonthFilter] = useState("All");
+  const [monthFilter, setMonthFilter] = useState(initialMonth || "All");
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);

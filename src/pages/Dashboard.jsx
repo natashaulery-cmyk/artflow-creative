@@ -67,12 +67,14 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard
-          tone="lavender"
-          label="This Month Sales"
-          value={formatMoney(calc.thisMonthSales)}
-          sub={`${calc.orderCount} orders`}
-        />
+        <Link to={`/orders?month=${mk}`} className="block">
+          <StatCard
+            tone="lavender"
+            label="This Month Sales"
+            value={formatMoney(calc.thisMonthSales)}
+            sub={`${calc.orderCount} orders · tap to view`}
+          />
+        </Link>
         <StatCard
           tone="mint"
           label="Estimated Profit"
@@ -110,7 +112,9 @@ export default function Dashboard() {
       <section>
         <h2 className="font-heading text-lg mb-3">Business Snapshot</h2>
         <div className="grid grid-cols-2 gap-3">
-          <MiniCard label="All-Time Sales" value={formatMoneyShort(calc.allTimeSales)} />
+          <Link to="/orders?month=All" className="block">
+            <MiniCard label="All-Time Sales" value={formatMoneyShort(calc.allTimeSales)} />
+          </Link>
           <MiniCard label="Items Sold" value={String(calc.itemsSold)} />
           <MiniCard label="Order Costs" value={formatMoneyShort(calc.orderCosts)} />
           <MiniCard label="Taxable Profit" value={formatMoneyShort(calc.taxableProfitAll)} />
