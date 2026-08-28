@@ -13,6 +13,7 @@ const tabs = ["All", "Available", "Sold"];
 export default function Gallery() {
   const { records, loading, reload } = useEntity("ArtPiece", "-created_date");
   const [filter, setFilter] = useState("All");
+  const [mediumFilter, setMediumFilter] = useState("All");
   const [search, setSearch] = useState("");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [editRecord, setEditRecord] = useState(null);
@@ -26,16 +27,25 @@ export default function Gallery() {
     return { total: records.length, available, soldCount: sold.length, revenue };
   }, [records]);
 
+  const mediums = useMemo(() => {
+    const set = new Set();
+    records.forEach((p) => {
+      if (p.medium) set.add(p.medium);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [records]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return records.filter((p) => {
       if (filter !== "All" && (p.status || "Available") !== filter) return false;
+      if (mediumFilter !== "All" && (p.medium || "") !== mediumFilter) return false;
       if (!q) return true;
       return `${p.title || ""} ${p.medium || ""} ${p.size || ""} ${p.platform || ""} ${p.buyer || ""} ${p.notes || ""}`
         .toLowerCase()
         .includes(q);
     });
-  }, [records, filter, search]);
+  }, [records, filter, mediumFilter, search]);
 
   const openCreate = () => {
     setEditRecord(null);
@@ -114,6 +124,34 @@ export default function Gallery() {
           </button>
         ))}
       </div>
+
+      {mediums.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+          <button
+            onClick={() => setMediumFilter("All")}
+            className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+              mediumFilter === "All"
+                ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            All mediums
+          </button>
+          {mediums.map((m) => (
+            <button
+              key={m}
+              onClick={() => setMediumFilter(m)}
+              className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+                mediumFilter === m
+                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filtered.length === 0 && (
         <div className="bg-card rounded-2xl p-5 border border-dashed border-[hsl(var(--border))] text-center text-sm text-muted-foreground">
