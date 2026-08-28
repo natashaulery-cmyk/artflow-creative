@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
+
+const cardLink = "block active:scale-95 transition-transform";
 
 const periods = [
   { key: "thisMonth", label: "This Month" },
@@ -97,14 +100,30 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard tone="lavender" label="Gross Sales" value={formatMoney(calc.grossSales)} />
-        <StatCard tone="blue" label="Number of Orders" value={String(calc.numOrders)} />
-        <StatCard tone="mint" label="Items Sold" value={String(calc.itemsSold)} />
-        <StatCard tone="peach" label="Product Costs" value={formatMoney(calc.productCosts)} />
-        <StatCard tone="yellow" label="Business Expenses" value={formatMoney(calc.bizExpenses)} />
-        <StatCard tone="mint" label="Estimated Profit" value={formatMoney(calc.estimatedProfit)} />
-        <StatCard tone="lavender" label="Taxable Profit" value={formatMoney(calc.taxableProfit)} />
-        <StatCard tone="peach" label="Tax Reserve" value={formatMoney(calc.taxReserve)} />
+        <Link to="/orders" className={cardLink}>
+          <StatCard tone="lavender" label="Gross Sales" value={formatMoney(calc.grossSales)} sub="tap to view orders" />
+        </Link>
+        <Link to="/orders" className={cardLink}>
+          <StatCard tone="blue" label="Number of Orders" value={String(calc.numOrders)} sub="tap to view orders" />
+        </Link>
+        <Link to="/orders" className={cardLink}>
+          <StatCard tone="mint" label="Items Sold" value={String(calc.itemsSold)} sub="tap to view orders" />
+        </Link>
+        <Link to="/inventory" className={cardLink}>
+          <StatCard tone="peach" label="Product Costs" value={formatMoney(calc.productCosts)} sub="tap to view inventory" />
+        </Link>
+        <Link to="/expenses" className={cardLink}>
+          <StatCard tone="yellow" label="Business Expenses" value={formatMoney(calc.bizExpenses)} sub="tap to view expenses" />
+        </Link>
+        <Link to="/orders" className={cardLink}>
+          <StatCard tone="mint" label="Estimated Profit" value={formatMoney(calc.estimatedProfit)} sub="tap to view orders" />
+        </Link>
+        <Link to="/taxes" className={cardLink}>
+          <StatCard tone="lavender" label="Taxable Profit" value={formatMoney(calc.taxableProfit)} sub="tap to view taxes" />
+        </Link>
+        <Link to="/taxes" className={cardLink}>
+          <StatCard tone="peach" label="Tax Reserve" value={formatMoney(calc.taxReserve)} sub="tap to view taxes" />
+        </Link>
       </div>
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
