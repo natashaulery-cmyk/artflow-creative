@@ -75,16 +75,22 @@ export default function Dashboard() {
             sub={`${calc.orderCount} orders · tap to view`}
           />
         </Link>
-        <StatCard
-          tone="mint"
-          label="Estimated Profit"
-          value={formatMoney(calc.thisMonthProfit)}
-        />
-        <StatCard
-          tone="peach"
-          label="Business Deductions"
-          value={formatMoney(calc.thisMonthDeductions)}
-        />
+        <Link to={`/orders?month=${mk}`} className="block">
+          <StatCard
+            tone="mint"
+            label="Estimated Profit"
+            value={formatMoney(calc.thisMonthProfit)}
+            sub="tap to view orders"
+          />
+        </Link>
+        <Link to="/expenses" className="block">
+          <StatCard
+            tone="peach"
+            label="Business Deductions"
+            value={formatMoney(calc.thisMonthDeductions)}
+            sub="tap to view expenses"
+          />
+        </Link>
         <StatCard
           tone="yellow"
           label="Tax Reserve"
