@@ -7,6 +7,7 @@ import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import MonthlySummary from "@/components/MonthlySummary";
 import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
+import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
 
 const cardLink = "block active:scale-95 transition-transform";
 
@@ -61,12 +62,12 @@ export default function Reports() {
     const taxableProfit = estimatedProfit - deductions;
     const taxReserve = Math.max(0, taxableProfit) * (taxRate / 100);
 
-    const vintedSales = po
-      .filter((o) => o.platform === "Vinted")
-      .reduce((s, o) => s + (o.sale_total || 0), 0);
-    const depopSales = po
-      .filter((o) => o.platform === "Depop")
-      .reduce((s, o) => s + (o.sale_total || 0), 0);
+    const platformSales = PLATFORMS.map((p) => ({
+      platform: p,
+      sales: po
+        .filter((o) => o.platform === p)
+        .reduce((s, o) => s + (o.sale_total || 0), 0),
+    }));
 
     return {
       grossSales,
@@ -77,12 +78,11 @@ export default function Reports() {
       estimatedProfit,
       taxableProfit,
       taxReserve,
-      vintedSales,
-      depopSales,
+      platformSales,
     };
   }, [orders, expenses, period, taxRate]);
 
-  const maxPlatform = Math.max(calc.vintedSales, calc.depopSales, 1);
+  const maxPlatform = Math.max(...calc.platformSales.map((p) => p.sales), 1);
 
   return (
     <div className="space-y-5">
@@ -154,18 +154,15 @@ export default function Reports() {
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-4">Sales Split</h2>
-        <PlatformBar
-          label="Vinted"
-          value={calc.vintedSales}
-          max={maxPlatform}
-          color="bg-[hsl(var(--primary))]"
-        />
-        <PlatformBar
-          label="Depop"
-          value={calc.depopSales}
-          max={maxPlatform}
-          color="bg-slate-400"
-        />
+        {calc.platformSales.map(({ platform, sales }) => (
+          <PlatformBar
+            key={platform}
+            label={platform}
+            value={sales}
+            max={maxPlatform}
+            color={PLATFORM_BAR[platform]}
+          />
+        ))}
       </section>
 
       {calc.numOrders === 0 && <EmptyRow text="No orders in this period" />}

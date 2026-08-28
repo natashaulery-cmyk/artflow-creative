@@ -6,6 +6,7 @@ import { formatMoney, formatDate, currentMonthKey, monthLabel } from "@/lib/form
 import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
 import PullToRefresh from "@/components/PullToRefresh";
+import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
 import { toast } from "sonner";
 
 export default function Orders() {
@@ -131,7 +132,7 @@ export default function Orders() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {["All", "Vinted", "Depop", "Bundles"].map((p) => (
+        {["All", ...PLATFORMS, "Bundles"].map((p) => (
           <button
             key={p}
             onClick={() => setPlatformFilter(p)}
@@ -190,9 +191,7 @@ export default function Orders() {
               </div>
               <span
                 className={`shrink-0 ml-2 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  o.platform === "Vinted"
-                    ? "pastel-lavender text-[hsl(var(--primary))]"
-                    : "pastel-mint text-slate-600"
+                  PLATFORM_TONE[o.platform] || "bg-muted text-muted-foreground"
                 }`}
               >
                 {o.platform}

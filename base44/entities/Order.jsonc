@@ -10,7 +10,11 @@
       "type": "string",
       "enum": [
         "Vinted",
-        "Depop"
+        "Depop",
+        "Mercari",
+        "Poshmark",
+        "eBay",
+        "Etsy"
       ]
     },
     "order_id": {

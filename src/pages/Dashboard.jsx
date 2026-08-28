@@ -6,6 +6,7 @@ import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/lib/format";
 import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import LowStockAlert from "@/components/LowStockAlert";
+import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
 
 const cardLink = "block active:scale-95 transition-transform";
 
@@ -32,12 +33,12 @@ export default function Dashboard() {
     const taxableProfit = thisMonthProfit - thisMonthDeductions;
     const taxReserve = Math.max(0, taxableProfit) * (taxRate / 100);
 
-    const vintedSales = monthOrders
-      .filter((o) => o.platform === "Vinted")
-      .reduce((s, o) => s + (o.sale_total || 0), 0);
-    const depopSales = monthOrders
-      .filter((o) => o.platform === "Depop")
-      .reduce((s, o) => s + (o.sale_total || 0), 0);
+    const platformSales = PLATFORMS.map((p) => ({
+      platform: p,
+      sales: monthOrders
+        .filter((o) => o.platform === p)
+        .reduce((s, o) => s + (o.sale_total || 0), 0),
+    }));
 
     const allTimeSales = orders.reduce((s, o) => s + (o.sale_total || 0), 0);
     const itemsSold = orders.reduce((s, o) => s + (o.quantity || 0), 0);
@@ -52,8 +53,7 @@ export default function Dashboard() {
       thisMonthDeductions,
       taxReserve,
       orderCount: monthOrders.length,
-      vintedSales,
-      depopSales,
+      platformSales,
       allTimeSales,
       itemsSold,
       orderCosts,
@@ -63,7 +63,7 @@ export default function Dashboard() {
 
   const recentOrders = orders.slice(0, 5);
   const recentExpenses = expenses.slice(0, 5);
-  const maxPlatform = Math.max(calc.vintedSales, calc.depopSales, 1);
+  const maxPlatform = Math.max(...calc.platformSales.map((p) => p.sales), 1);
 
   return (
     <div className="space-y-6">
@@ -123,22 +123,16 @@ export default function Dashboard() {
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-4">Sales by Platform</h2>
-        <Link to="/orders" className="block">
-          <PlatformBar
-            label="Vinted"
-            value={calc.vintedSales}
-            max={maxPlatform}
-            color="bg-[hsl(var(--primary))]"
-          />
-        </Link>
-        <Link to="/orders" className="block">
-          <PlatformBar
-            label="Depop"
-            value={calc.depopSales}
-            max={maxPlatform}
-            color="bg-slate-400"
-          />
-        </Link>
+        {calc.platformSales.map(({ platform, sales }) => (
+          <Link to="/orders" className="block" key={platform}>
+            <PlatformBar
+              label={platform}
+              value={sales}
+              max={maxPlatform}
+              color={PLATFORM_BAR[platform]}
+            />
+          </Link>
+        ))}
       </section>
 
       <section>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { calculateOrderCosts } from "@/lib/orderCost";
+import { PLATFORMS } from "@/lib/platforms";
 import { toast } from "sonner";
 import Field from "@/components/Field";
 
@@ -89,13 +90,13 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                {["Vinted", "Depop"].map((p) => (
+              <div className="flex flex-wrap gap-2">
+                {PLATFORMS.map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => set("platform", p)}
-                    className={`h-12 rounded-2xl font-semibold transition-all ${
+                    className={`px-3.5 h-10 rounded-full text-sm font-medium ${
                       form.platform === p
                         ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
                         : "bg-muted text-muted-foreground"
