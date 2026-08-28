@@ -29,6 +29,7 @@ export default function Expenses() {
   const frameItems = useMemo(
     () =>
       inventoryCosts
+        .filter((i) => (i.category || "Frame") === "Frame")
         .map((i) => ({
           size: i.size,
           qty: i.quantity_on_hand || 0,

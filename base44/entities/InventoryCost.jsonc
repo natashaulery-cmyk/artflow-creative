@@ -2,8 +2,24 @@
   "name": "InventoryCost",
   "type": "object",
   "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name for the item (used for non-frame inventory)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Frame",
+        "Print",
+        "Supply",
+        "Packaging",
+        "Other"
+      ],
+      "default": "Frame"
+    },
     "size": {
-      "type": "string"
+      "type": "string",
+      "description": "Frame/print size (e.g. 5x7). Used to match order cost for frames."
     },
     "base_item_cost": {
       "type": "number"
@@ -29,7 +45,6 @@
     }
   },
   "required": [
-    "size",
     "base_item_cost",
     "quantity_on_hand"
   ]

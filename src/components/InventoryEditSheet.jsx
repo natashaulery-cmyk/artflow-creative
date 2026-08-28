@@ -6,30 +6,67 @@ import { calculateUnitCost } from "@/lib/orderCost";
 import { toast } from "sonner";
 import Field from "@/components/Field";
 
+const categories = ["Frame", "Print", "Supply", "Packaging", "Other"];
+const sizes = ["4x4", "4x6", "5x7", "8x8", "8x10", "11x14"];
+
+const emptyForm = {
+  category: "Frame",
+  name: "",
+  size: "",
+  base_item_cost: "",
+  paper_ink_cost: "",
+  packaging_cost: "",
+  quantity_on_hand: "",
+  low_stock_level: "",
+};
+
 export default function InventoryEditSheet({ open, onClose, record }) {
-  const [form, setForm] = useState(null);
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const isCreate = !record;
 
   useEffect(() => {
-    if (open && record) {
-      setForm({
-        base_item_cost: String(record.base_item_cost ?? ""),
-        paper_ink_cost: String(record.paper_ink_cost ?? ""),
-        packaging_cost: String(record.packaging_cost ?? ""),
-        quantity_on_hand: String(record.quantity_on_hand ?? ""),
-        low_stock_level: String(record.low_stock_level ?? ""),
-      });
+    if (open) {
+      if (record) {
+        setForm({
+          category: record.category || "Frame",
+          name: record.name || "",
+          size: record.size || "",
+          base_item_cost: String(record.base_item_cost ?? ""),
+          paper_ink_cost: String(record.paper_ink_cost ?? ""),
+          packaging_cost: String(record.packaging_cost ?? ""),
+          quantity_on_hand: String(record.quantity_on_hand ?? ""),
+          low_stock_level: String(record.low_stock_level ?? ""),
+        });
+      } else {
+        setForm(emptyForm);
+      }
     }
   }, [open, record]);
 
-  if (!record) return null;
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const usesSize = form.category === "Frame" || form.category === "Print";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (usesSize && !form.size) {
+      toast.error("Choose a size");
+      return;
+    }
+    if (!usesSize && !form.name.trim()) {
+      toast.error("Enter an item name");
+      return;
+    }
+    if (form.base_item_cost === "" || form.quantity_on_hand === "") {
+      toast.error("Enter base cost and quantity");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
+        category: form.category,
+        name: usesSize ? form.size : form.name.trim(),
+        size: usesSize ? form.size : null,
         base_item_cost: Number(form.base_item_cost) || 0,
         paper_ink_cost: Number(form.paper_ink_cost) || 0,
         packaging_cost: Number(form.packaging_cost) || 0,
@@ -37,11 +74,16 @@ export default function InventoryEditSheet({ open, onClose, record }) {
         low_stock_level: Number(form.low_stock_level) || 0,
       };
       payload.total_unit_cost = calculateUnitCost(payload);
-      await base44.entities.InventoryCost.update(record.id, payload);
-      toast.success("Inventory updated");
+      if (isCreate) {
+        await base44.entities.InventoryCost.create(payload);
+        toast.success("Inventory item added");
+      } else {
+        await base44.entities.InventoryCost.update(record.id, payload);
+        toast.success("Inventory updated");
+      }
       onClose();
     } catch (err) {
-      toast.error("Could not update inventory");
+      toast.error(isCreate ? "Could not add inventory" : "Could not update inventory");
     } finally {
       setSaving(false);
     }
@@ -49,7 +91,7 @@ export default function InventoryEditSheet({ open, onClose, record }) {
 
   return (
     <AnimatePresence>
-      {open && form && (
+      {open && (
         <>
           <motion.div
             className="fixed inset-0 bg-black/30 z-50"
@@ -67,7 +109,9 @@ export default function InventoryEditSheet({ open, onClose, record }) {
           >
             <div className="w-12 h-1.5 rounded-full bg-[hsl(var(--border))] mx-auto mb-5" />
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-heading text-2xl text-foreground">Edit {record.size}</h2>
+              <h2 className="font-heading text-2xl text-foreground">
+                {isCreate ? "Add Inventory" : `Edit ${record.name || record.size}`}
+              </h2>
               <button
                 onClick={onClose}
                 className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
@@ -76,6 +120,55 @@ export default function InventoryEditSheet({ open, onClose, record }) {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <Field label="Category">
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => set("category", c)}
+                      className={`px-3.5 h-10 rounded-full text-sm font-medium ${
+                        form.category === c
+                          ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              {usesSize ? (
+                <Field label="Size">
+                  <div className="flex flex-wrap gap-2">
+                    {sizes.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => set("size", s)}
+                        className={`px-3 h-10 rounded-full text-sm font-medium ${
+                          form.size === s
+                            ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              ) : (
+                <Field label="Item Name">
+                  <input
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder="e.g. Cello tape roll"
+                    className="form-input"
+                  />
+                </Field>
+              )}
+
               <Field label="Quantity on Hand">
                 <input
                   type="number"
@@ -143,7 +236,7 @@ export default function InventoryEditSheet({ open, onClose, record }) {
                 disabled={saving}
                 className="w-full h-14 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-lg shadow-lg active:scale-[0.98] transition-transform disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Save Changes"}
+                {saving ? "Saving…" : isCreate ? "Add Item" : "Save Changes"}
               </button>
             </form>
           </motion.div>
