@@ -4,6 +4,7 @@ import { useEntity } from "@/lib/useBusinessData";
 import PullToRefresh from "@/components/PullToRefresh";
 import ScheduleEventForm from "@/components/ScheduleEventForm";
 import PageHeader from "@/components/PageHeader";
+import { useModalRoute } from "@/hooks/useModalRoute";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
@@ -46,7 +47,7 @@ export default function Calendar() {
     return d;
   });
   const [selected, setSelected] = useState(ymd(today));
-  const [formOpen, setFormOpen] = useState(false);
+  const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [editEvent, setEditEvent] = useState(null);
 
   const byDate = useMemo(() => {
@@ -86,11 +87,11 @@ export default function Calendar() {
   const openAdd = (date) => {
     setEditEvent(null);
     setSelected(date);
-    setFormOpen(true);
+    openForm();
   };
   const openEdit = (ev) => {
     setEditEvent(ev);
-    setFormOpen(true);
+    openForm();
   };
 
   return (
@@ -255,7 +256,7 @@ export default function Calendar() {
 
       <ScheduleEventForm
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={closeForm}
         date={selected}
         event={editEvent}
       />

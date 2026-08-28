@@ -11,10 +11,6 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import Layout from '@/components/Layout';
-import Dashboard from '@/pages/Dashboard';
-import Orders from '@/pages/Orders';
-import Inventory from '@/pages/Inventory';
-import Expenses from '@/pages/Expenses';
 import Taxes from '@/pages/Taxes';
 import Reports from '@/pages/Reports';
 import Assistant from '@/pages/Assistant';
@@ -24,6 +20,8 @@ import Account from '@/pages/Account';
 import Calendar from '@/pages/Calendar';
 import Gallery from '@/pages/Gallery';
 // Add page imports here
+
+const TabShell = () => null;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -56,10 +54,10 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/expenses" element={<Expenses />} />
+          <Route path="/" element={<TabShell />} />
+          <Route path="/orders" element={<TabShell />} />
+          <Route path="/inventory" element={<TabShell />} />
+          <Route path="/expenses" element={<TabShell />} />
           <Route path="/taxes" element={<Taxes />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/assistant" element={<Assistant />} />

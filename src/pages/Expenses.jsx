@@ -7,6 +7,7 @@ import ExpenseForm from "@/components/ExpenseForm";
 import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
 import PageHeader from "@/components/PageHeader";
+import { useModalRoute } from "@/hooks/useModalRoute";
 
 const categories = [
   "All",
@@ -28,7 +29,7 @@ export default function Expenses() {
   const { records: orders } = useEntity("Order", "-sale_date");
   const refresh = async () => { await reloadExpenses(); };
   const [filter, setFilter] = useState("All");
-  const [formOpen, setFormOpen] = useState(false);
+  const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [editRecord, setEditRecord] = useState(null);
 
   const frameItems = useMemo(
@@ -74,7 +75,7 @@ export default function Expenses() {
 
   const openEdit = (rec) => {
     setEditRecord(rec);
-    setFormOpen(true);
+    openForm();
   };
 
   return (
@@ -89,7 +90,7 @@ export default function Expenses() {
             <button
               onClick={() => {
                 setEditRecord(null);
-                setFormOpen(true);
+                openForm();
               }}
               className="shrink-0 h-11 px-4 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold flex items-center gap-2 active:scale-95 transition-transform"
             >
@@ -100,10 +101,10 @@ export default function Expenses() {
       />
 
       <div className="pastel-peach rounded-3xl p-5 border border-[hsl(var(--border))]">
-        <p className="text-[11px] font-semibold text-black uppercase">
+        <p className="text-[11px] font-semibold text-foreground uppercase">
           Total Business Expenses
         </p>
-        <p className="font-heading text-3xl mt-1 text-black">{formatMoney(totalAll)}</p>
+        <p className="font-heading text-3xl mt-1 text-foreground">{formatMoney(totalAll)}</p>
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
@@ -189,7 +190,7 @@ export default function Expenses() {
       <button
         onClick={() => {
           setEditRecord(null);
-          setFormOpen(true);
+          openForm();
         }}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary))]/40 flex items-center justify-center active:scale-95 transition-transform z-30"
         style={{ left: "50%", transform: "translateX(calc(50vw - 2.75rem - 1.25rem))" }}
@@ -200,7 +201,7 @@ export default function Expenses() {
 
       <ExpenseForm
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={closeForm}
         record={editRecord}
       />
     </div>

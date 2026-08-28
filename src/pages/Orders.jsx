@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Search, Plus, RefreshCw, Download } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
@@ -6,6 +6,8 @@ import { formatMoney, formatDate, currentMonthKey, monthShort } from "@/lib/form
 import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
 import PageHeader from "@/components/PageHeader";
+import { useModalRoute } from "@/hooks/useModalRoute";
+import { useSearchParams } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
 import { toast } from "sonner";
@@ -17,8 +19,15 @@ export default function Orders() {
   const initialMonth = new URLSearchParams(window.location.search).get("month");
   const [platformFilter, setPlatformFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState(initialMonth || "All");
+  const [searchParams] = useSearchParams();
+  const monthParam = searchParams.get("month");
+  // Sync the month filter when arriving via a ?month= deep link (e.g. from the
+  // Dashboard). Needed because this view is kept mounted across tab switches.
+  useEffect(() => {
+    if (monthParam) setMonthFilter(monthParam);
+  }, [monthParam]);
   const [search, setSearch] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
+  const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [syncing, setSyncing] = useState(false);
 
   const syncEmails = async () => {
@@ -126,15 +135,15 @@ export default function Orders() {
       <div className="grid grid-cols-3 gap-2">
         <div className="pastel-lavender rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sales</p>
-          <p className="font-heading text-lg mt-1 text-black">{formatMoney(summary.sales)}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{formatMoney(summary.sales)}</p>
         </div>
         <div className="pastel-blue rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Orders</p>
-          <p className="font-heading text-lg mt-1 text-black">{summary.count}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{summary.count}</p>
         </div>
         <div className="pastel-mint rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Profit</p>
-          <p className="font-heading text-lg mt-1 text-black">{formatMoney(summary.profit)}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{formatMoney(summary.profit)}</p>
         </div>
       </div>
 
@@ -224,7 +233,7 @@ export default function Orders() {
       </div>
 
       <button
-        onClick={() => setFormOpen(true)}
+        onClick={openForm}
         className="fixed bottom-24 right-5 max-w-md mx-auto w-14 h-14 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary))]/40 flex items-center justify-center active:scale-95 transition-transform z-30"
         style={{ left: "50%", transform: "translateX(calc(50vw - 2.75rem - 1.25rem))" }}
         aria-label="Add order"
@@ -234,7 +243,7 @@ export default function Orders() {
 
       <OrderForm
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={closeForm}
         inventoryCosts={inventoryCosts}
       />
     </div>

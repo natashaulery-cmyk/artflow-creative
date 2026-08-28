@@ -8,12 +8,13 @@ import { toast } from "sonner";
 import InventoryEditSheet from "@/components/InventoryEditSheet";
 import PullToRefresh from "@/components/PullToRefresh";
 import PageHeader from "@/components/PageHeader";
+import { useModalRoute } from "@/hooks/useModalRoute";
 import { Image } from "@/components/ui/image";
 
 export default function Inventory() {
   const { records, loading, reload: reloadInventory } = useEntity("InventoryCost", "-created_date");
   const [editRecord, setEditRecord] = useState(null);
-  const [formOpen, setFormOpen] = useState(false);
+  const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [filter, setFilter] = useState("All");
   const [overrides, setOverrides] = useState({});
   const [syncing, setSyncing] = useState(false);
@@ -57,12 +58,12 @@ export default function Inventory() {
 
   const openCreate = () => {
     setEditRecord(null);
-    setFormOpen(true);
+    openForm();
   };
 
   const openEdit = (rec) => {
     setEditRecord(rec);
-    setFormOpen(true);
+    openForm();
   };
 
   const displayRecords = records.map((r) => overrides[r.id] || r);
@@ -166,7 +167,7 @@ export default function Inventory() {
           const title = rec.name || rec.size || "Unnamed item";
           const cat = rec.category || "Frame";
           const cardTone = out
-            ? "bg-red-50 border-rose-200"
+            ? "bg-[hsl(var(--destructive))]/10 border-[hsl(var(--destructive))]/30"
             : lowStock
             ? "pastel-yellow border-amber-300"
             : "bg-card border-[hsl(var(--border))]";
@@ -189,10 +190,10 @@ export default function Inventory() {
                       {cat}
                     </span>
                     {rec.size && cat !== "Frame" && (
-                      <span className="text-[11px] text-black">{rec.size}</span>
+                      <span className="text-[11px] text-foreground">{rec.size}</span>
                     )}
                   </div>
-                  <p className="font-heading text-xl truncate text-black">{title}</p>
+                  <p className="font-heading text-xl truncate text-foreground">{title}</p>
                   <p className="text-xs text-foreground">
                     Base {formatMoney(rec.base_item_cost)} · Unit cost {formatMoney(unitCost)}
                   </p>
@@ -212,7 +213,7 @@ export default function Inventory() {
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase">
                     On Hand
                   </p>
-                  <p className="font-heading text-2xl text-black">{qty}</p>
+                  <p className="font-heading text-2xl text-foreground">{qty}</p>
                   {out && (
                     <span className="text-xs font-semibold text-rose-600">Out of stock</span>
                   )}
@@ -253,7 +254,7 @@ export default function Inventory() {
 
       <InventoryEditSheet
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={closeForm}
         record={editRecord}
       />
     </div>

@@ -11,12 +11,16 @@ const getHashId = (hash) => {
   }
 };
 
+const TAB_PATHS = new Set(["/", "/orders", "/inventory", "/expenses"]);
+
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation();
   const navigationType = useNavigationType();
 
   useEffect(() => {
     if (navigationType === "POP") return;
+    // Tab views are kept mounted in Layout, which restores their scroll.
+    if (TAB_PATHS.has(pathname)) return;
 
     if (hash) {
       const id = getHashId(hash);

@@ -104,15 +104,15 @@ export default function MonthlySummary({ orders, expenses }) {
       <div className="grid grid-cols-3 gap-2">
         <div className="pastel-lavender rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sales</p>
-          <p className="font-heading text-lg mt-1 text-black">{formatMoney(calc.grossSales)}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{formatMoney(calc.grossSales)}</p>
         </div>
         <div className="pastel-peach rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Costs</p>
-          <p className="font-heading text-lg mt-1 text-black">{formatMoney(calc.totalCosts)}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{formatMoney(calc.totalCosts)}</p>
         </div>
         <div className="pastel-blue rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Orders</p>
-          <p className="font-heading text-lg mt-1 text-black">{calc.numOrders}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{calc.numOrders}</p>
         </div>
       </div>
 

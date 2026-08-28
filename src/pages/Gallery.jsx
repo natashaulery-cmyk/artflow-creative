@@ -5,6 +5,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import ArtPieceForm from "@/components/ArtPieceForm";
 import PullToRefresh from "@/components/PullToRefresh";
 import PageHeader from "@/components/PageHeader";
+import { useModalRoute } from "@/hooks/useModalRoute";
 import { Image } from "@/components/ui/image";
 
 const tabs = ["All", "Available", "Sold"];
@@ -13,7 +14,7 @@ export default function Gallery() {
   const { records, loading, reload } = useEntity("ArtPiece", "-created_date");
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
+  const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [editRecord, setEditRecord] = useState(null);
 
   const refresh = async () => { await reload(); };
@@ -38,12 +39,12 @@ export default function Gallery() {
 
   const openCreate = () => {
     setEditRecord(null);
-    setFormOpen(true);
+    openForm();
   };
 
   const openEdit = (rec) => {
     setEditRecord(rec);
-    setFormOpen(true);
+    openForm();
   };
 
   if (loading) {
@@ -67,15 +68,15 @@ export default function Gallery() {
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Pieces</p>
-          <p className="font-heading text-2xl mt-1 text-black">{stats.total}</p>
+          <p className="font-heading text-2xl mt-1 text-foreground">{stats.total}</p>
         </div>
         <div className="pastel-mint rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Available</p>
-          <p className="font-heading text-2xl mt-1 text-black">{stats.available}</p>
+          <p className="font-heading text-2xl mt-1 text-foreground">{stats.available}</p>
         </div>
         <div className="pastel-lavender rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sold</p>
-          <p className="font-heading text-2xl mt-1 text-black">{stats.soldCount}</p>
+          <p className="font-heading text-2xl mt-1 text-foreground">{stats.soldCount}</p>
         </div>
       </div>
 
@@ -84,7 +85,7 @@ export default function Gallery() {
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
             Gallery Revenue
           </span>
-          <span className="font-heading text-xl text-black">{formatMoney(stats.revenue)}</span>
+          <span className="font-heading text-xl text-foreground">{formatMoney(stats.revenue)}</span>
         </div>
       )}
 
@@ -148,11 +149,11 @@ export default function Gallery() {
                 </span>
               </div>
               <div className="p-3">
-                <p className="font-medium text-sm truncate text-black">{p.title}</p>
+                <p className="font-medium text-sm truncate text-foreground">{p.title}</p>
                 {p.size && (
                   <p className="text-[11px] text-muted-foreground mt-0.5">{p.size}</p>
                 )}
-                <p className="font-heading text-base mt-1 text-black">
+                <p className="font-heading text-base mt-1 text-foreground">
                   {formatMoney(sold ? p.sale_price || p.price : p.price)}
                 </p>
                 {sold && p.sale_date && (
@@ -177,7 +178,7 @@ export default function Gallery() {
 
       <ArtPieceForm
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={closeForm}
         record={editRecord}
       />
     </div>

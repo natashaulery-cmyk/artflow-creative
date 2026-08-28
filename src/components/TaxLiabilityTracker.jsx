@@ -54,11 +54,11 @@ export default function TaxLiabilityTracker({ orders, taxRate }) {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="pastel-lavender rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Total Sales Income</p>
-          <p className="font-heading text-lg mt-1 text-black">{formatMoney(totalSales)}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{formatMoney(totalSales)}</p>
         </div>
         <div className="pastel-peach rounded-2xl p-4 border border-[hsl(var(--border))]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">Total Tax Liability</p>
-          <p className="font-heading text-lg mt-1 text-black">{formatMoney(totalLiability)}</p>
+          <p className="font-heading text-lg mt-1 text-foreground">{formatMoney(totalLiability)}</p>
         </div>
       </div>
 

@@ -67,7 +67,7 @@ export default function BottomNav() {
     <>
       <nav className="fixed bottom-0 inset-x-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none">
         <div className="max-w-md mx-auto pointer-events-auto">
-          <div className="bg-white/90 backdrop-blur-xl border border-[hsl(var(--border))] rounded-[1.75rem] shadow-[0_8px_30px_rgba(80,60,120,0.12)] px-2 py-2 flex items-center justify-between">
+          <div className="bg-background/90 backdrop-blur-xl border border-[hsl(var(--border))] rounded-[1.75rem] shadow-[0_8px_30px_rgba(80,60,120,0.12)] px-2 py-2 flex items-center justify-between">
             {tabs.map((item) => {
               const isMore = item.to === "__more";
               const active = isMore ? moreActive || moreOpen : isActive(item.to);
