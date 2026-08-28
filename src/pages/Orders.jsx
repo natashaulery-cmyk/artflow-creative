@@ -178,7 +178,7 @@ export default function Orders() {
               <div className="min-w-0">
                 <p className="font-medium truncate">{o.product_name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {o.size} · Qty {o.quantity} · {formatDate(o.sale_date)}
+                  <span className="text-foreground">{o.size}</span> · Qty <span className="text-foreground">{o.quantity}</span> · {formatDate(o.sale_date)}
                 </p>
               </div>
               <span
