@@ -1,9 +1,9 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, ShoppingBag, Package, Receipt, Percent } from "lucide-react";
+import { Home, ShoppingBag, Package, Receipt, Percent } from "lucide-react";
 
 const items = [
-  { label: "Dashboard", to: "/", icon: LayoutDashboard },
+  { label: "Home", to: "/", icon: Home },
   { label: "Orders", to: "/orders", icon: ShoppingBag },
   { label: "Inventory", to: "/inventory", icon: Package },
   { label: "Expenses", to: "/expenses", icon: Receipt },
