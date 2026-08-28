@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Minus, Plus, Pencil } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
@@ -7,8 +7,6 @@ import { calculateUnitCost as calcUnit } from "@/lib/orderCost";
 import { toast } from "sonner";
 import InventoryEditSheet from "@/components/InventoryEditSheet";
 import PullToRefresh from "@/components/PullToRefresh";
-
-const categoryFilters = ["All", "Frame", "Print", "Supply", "Packaging", "Other"];
 
 export default function Inventory() {
   const { records, loading, reload: reloadInventory } = useEntity("InventoryCost", "-created_date");
@@ -46,6 +44,14 @@ export default function Inventory() {
   };
 
   const displayRecords = records.map((r) => overrides[r.id] || r);
+  const counts = useMemo(() => {
+    const c = { All: displayRecords.length, Frame: 0, Print: 0, Packaging: 0, Supply: 0, Other: 0 };
+    displayRecords.forEach((r) => {
+      const k = r.category || "Frame";
+      if (c[k] != null) c[k] += 1;
+    });
+    return c;
+  }, [displayRecords]);
   const filtered = displayRecords.filter(
     (r) => filter === "All" || (r.category || "Frame") === filter
   );
@@ -71,8 +77,35 @@ export default function Inventory() {
         <p className="text-muted-foreground text-sm">Stock across all categories</p>
       </header>
 
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { key: "All", label: "All", count: counts.All },
+          { key: "Frame", label: "Frames", count: counts.Frame },
+          { key: "Print", label: "Prints", count: counts.Print },
+          { key: "Packaging", label: "Packaging", count: counts.Packaging },
+        ].map((q) => {
+          const active = filter === q.key;
+          return (
+            <button
+              key={q.key}
+              onClick={() => setFilter(q.key)}
+              className={`flex flex-col items-center justify-center h-16 rounded-2xl border transition-colors ${
+                active
+                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent"
+                  : "bg-card text-foreground border-[hsl(var(--border))]"
+              }`}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                {q.label}
+              </span>
+              <span className="text-xl font-heading leading-tight">{q.count}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {categoryFilters.map((c) => (
+        {["Supply", "Other"].map((c) => (
           <button
             key={c}
             onClick={() => setFilter(c)}
@@ -82,7 +115,7 @@ export default function Inventory() {
                 : "bg-muted text-muted-foreground"
             }`}
           >
-            {c}
+            {c} · {counts[c]}
           </button>
         ))}
       </div>
