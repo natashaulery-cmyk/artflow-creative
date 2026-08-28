@@ -52,9 +52,13 @@ export default function Orders() {
     return [...set].sort().reverse();
   }, [orders]);
 
+  const isBundle = (o) => /bundle/i.test(o.product_name || "");
+
   const filtered = useMemo(() => {
     return orders.filter((o) => {
-      if (platformFilter !== "All" && o.platform !== platformFilter) return false;
+      if (platformFilter === "Bundles") {
+        if (!isBundle(o)) return false;
+      } else if (platformFilter !== "All" && o.platform !== platformFilter) return false;
       if (monthFilter !== "All" && (o.sale_date || "").slice(0, 7) !== monthFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -121,7 +125,7 @@ export default function Orders() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {["All", "Vinted", "Depop"].map((p) => (
+        {["All", "Vinted", "Depop", "Bundles"].map((p) => (
           <button
             key={p}
             onClick={() => setPlatformFilter(p)}
