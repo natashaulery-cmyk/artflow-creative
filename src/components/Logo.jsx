@@ -1,26 +1,22 @@
 import React from "react";
+import { Image } from "@/components/ui/image";
 
-// Brand mark: periwinkle rounded square with a navy-indigo enso (brush ring).
-// Matches the user's logo palette — bg #B6B8D1, symbol #3D4067.
+// Brand mark: the user's enso logo image, fixed in the top-left corner.
+const LOGO_URL =
+  "https://media.base44.com/images/public/6a91be5ced6058323eb21f7d/c5405678d_IMG_7694.jpeg";
+
 export default function Logo({ size = 36, className = "" }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      fill="none"
-      className={className}
-      role="img"
-      aria-label="ArtFlow"
+    <div
+      style={{ width: size, height: size }}
+      className={`rounded-[30%] overflow-hidden ${className}`}
     >
-      <rect width="48" height="48" rx="14" fill="#B6B8D1" />
-      <path
-        d="M29.47 8.96 A16 16 0 1 1 37.86 16"
-        stroke="#3D4067"
-        strokeWidth="6"
-        strokeLinecap="round"
-        fill="none"
+      <Image
+        src={LOGO_URL}
+        alt="ArtFlow"
+        fittingType="fill"
+        className="w-full h-full"
       />
-    </svg>
+    </div>
   );
 }
