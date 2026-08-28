@@ -113,7 +113,7 @@ export default function Calendar() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}
-            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-muted flex items-center justify-center"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -122,7 +122,7 @@ export default function Calendar() {
           </h2>
           <button
             onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}
-            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-muted flex items-center justify-center"
           >
             <ChevronRight className="w-5 h-5" />
           </button>

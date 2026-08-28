@@ -98,3 +98,15 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+
+/* iOS readability: floor the tiny arbitrary font sizes at 12px. Unlayered so it
+   overrides Tailwind's utilities without touching every component. */
+.text-\[10px\], .text-\[11px\] { font-size: 0.75rem; line-height: 1rem; }
+
+/* Horizontal page-switch transition (mobile). No fill-mode, so the element
+   returns to no transform at rest — fixed FABs keep their viewport anchoring. */
+@keyframes screen-slide {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.screen-slide { animation: screen-slide 0.22s ease-out; }

@@ -200,7 +200,7 @@ export default function Inventory() {
                 </div>
                 <button
                   onClick={() => openEdit(rec)}
-                  className="w-9 h-9 rounded-full bg-white/70 flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-white/70 flex items-center justify-center shrink-0"
                   aria-label="Edit"
                 >
                   <Pencil className="w-4 h-4 text-muted-foreground" />

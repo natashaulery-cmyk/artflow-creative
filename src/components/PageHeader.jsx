@@ -11,7 +11,7 @@ export default function PageHeader({ title, subtitle, onBack, right, className =
       {onBack && (
         <button
           onClick={onBack}
-          className="w-9 h-9 rounded-full bg-card border border-[hsl(var(--border))] flex items-center justify-center shrink-0"
+          className="w-11 h-11 rounded-full bg-card border border-[hsl(var(--border))] flex items-center justify-center shrink-0"
           aria-label="Back"
         >
           <ArrowLeft className="w-4 h-4" />
