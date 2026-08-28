@@ -1,0 +1,68 @@
+{
+  "name": "ArtPiece",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the artwork"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Photo of the artwork"
+    },
+    "medium": {
+      "type": "string",
+      "description": "Medium or materials (e.g. Giclee print, Original)"
+    },
+    "size": {
+      "type": "string",
+      "description": "Dimensions (e.g. 8x10)"
+    },
+    "price": {
+      "type": "number",
+      "description": "Asking price"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Available",
+        "Sold"
+      ],
+      "default": "Available"
+    },
+    "sale_price": {
+      "type": "number",
+      "description": "Final sale price"
+    },
+    "sale_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "buyer": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string",
+      "description": "Where it sold (Vinted, Depop, Etsy, In person, etc.)"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "price",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

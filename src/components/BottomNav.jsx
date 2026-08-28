@@ -1,11 +1,12 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, ShoppingBag, Package, Receipt, Percent, Sparkles, Calendar as CalendarIcon } from "lucide-react";
+import { Home, ShoppingBag, Package, Receipt, Percent, Sparkles, Calendar as CalendarIcon, Image as ImageIcon } from "lucide-react";
 
 const items = [
   { label: "Home", to: "/", icon: Home },
   { label: "Orders", to: "/orders", icon: ShoppingBag },
   { label: "Inventory", to: "/inventory", icon: Package },
+  { label: "Gallery", to: "/gallery", icon: ImageIcon },
   { label: "Expenses", to: "/expenses", icon: Receipt },
   { label: "Calendar", to: "/calendar", icon: CalendarIcon },
   { label: "Taxes", to: "/taxes", icon: Percent },
