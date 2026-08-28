@@ -5,12 +5,14 @@ import PullToRefresh from "@/components/PullToRefresh";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/lib/format";
 import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
+import LowStockAlert from "@/components/LowStockAlert";
 
 const cardLink = "block active:scale-95 transition-transform";
 
 export default function Dashboard() {
   const { records: orders, reload: reloadOrders } = useEntity("Order", "-created_date");
   const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
+  const { records: inventory } = useEntity("InventoryCost", "-created_date");
   const [taxRate] = useTaxRate();
   const refresh = async () => {
     await Promise.all([reloadOrders(), reloadExpenses()]);
@@ -81,6 +83,8 @@ export default function Dashboard() {
           <UserCircle className="w-5 h-5 text-muted-foreground" />
         </Link>
       </header>
+
+      <LowStockAlert records={inventory} />
 
       <div className="grid grid-cols-2 gap-3">
         <Link to={`/orders?month=${mk}`} className="block">
