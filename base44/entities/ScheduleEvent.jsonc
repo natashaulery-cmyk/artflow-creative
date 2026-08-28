@@ -1,0 +1,46 @@
+{
+  "name": "ScheduleEvent",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time": {
+      "type": "string",
+      "description": "Optional time, e.g. 14:30"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Deadline",
+        "Market",
+        "Meeting",
+        "Drop",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

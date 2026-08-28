@@ -1,12 +1,13 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, ShoppingBag, Package, Receipt, Percent, Sparkles } from "lucide-react";
+import { Home, ShoppingBag, Package, Receipt, Percent, Sparkles, Calendar as CalendarIcon } from "lucide-react";
 
 const items = [
   { label: "Home", to: "/", icon: Home },
   { label: "Orders", to: "/orders", icon: ShoppingBag },
   { label: "Inventory", to: "/inventory", icon: Package },
   { label: "Expenses", to: "/expenses", icon: Receipt },
+  { label: "Calendar", to: "/calendar", icon: CalendarIcon },
   { label: "Taxes", to: "/taxes", icon: Percent },
   { label: "Advisor", to: "/assistant", icon: Sparkles },
 ];
@@ -24,7 +25,7 @@ export default function BottomNav() {
               <Link
                 key={item.to}
                 to={item.to}
-                className="flex flex-col items-center justify-center gap-0.5 w-16 py-1.5"
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1.5"
               >
                 <Icon
                   className={`w-[22px] h-[22px] transition-colors ${

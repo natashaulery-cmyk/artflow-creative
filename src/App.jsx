@@ -22,6 +22,7 @@ import Assistant from '@/pages/Assistant';
 import { Navigate } from 'react-router-dom';
 import { ThemeProvider } from "next-themes";
 import Account from '@/pages/Account';
+import Calendar from '@/pages/Calendar';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
           <Route path="/reports" element={<Reports />} />
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/calendar" element={<Calendar />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
