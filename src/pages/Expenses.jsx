@@ -99,7 +99,7 @@ export default function Expenses() {
       </header>
 
       <div className="pastel-peach rounded-3xl p-5 border border-[hsl(var(--border))]">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase">
+        <p className="text-[11px] font-semibold text-black uppercase">
           Total Business Expenses
         </p>
         <p className="font-heading text-3xl mt-1 text-black">{formatMoney(totalAll)}</p>
