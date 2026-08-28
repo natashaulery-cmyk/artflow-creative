@@ -82,15 +82,26 @@ export default async function(req) {
       }
       return -1;
     };
+    const costIdx = headers.findIndex(
+      (h) => /cost/i.test(h) && !/sale/i.test(h)
+    );
+    const priceIdx = (() => {
+      for (const n of ['price', 'sale', 'unit_price', 'amount', 'total']) {
+        const i = headers.findIndex((h, j) => j !== costIdx && h.includes(n));
+        if (i >= 0) return i;
+      }
+      return -1;
+    })();
     const idx = {
       product: colIndex(['product', 'item', 'title', 'name']),
       size: colIndex(['size']),
       quantity: colIndex(['quantity', 'qty']),
-      price: colIndex(['price', 'sale', 'unit_price', 'amount', 'total']),
+      price: priceIdx,
       platform: colIndex(['platform', 'site']),
       date: colIndex(['date', 'sale_date']),
       buyer: colIndex(['buyer', 'customer', 'name']),
       orderId: colIndex(['order', 'order_id', 'id']),
+      cost: costIdx,
     };
 
     const inventoryCosts = await base44.entities.InventoryCost.list('size', 100);
@@ -132,7 +143,20 @@ export default async function(req) {
       }
 
       const inv = inventoryCosts.find((i) => i.size === size);
-      const costs = calculateOrderCosts({ quantity, size, unit_price }, inv);
+      let costs = calculateOrderCosts({ quantity, size, unit_price }, inv);
+      const costRaw =
+        idx.cost >= 0 ? String(row[idx.cost] || '').replace(/[^0-9.]/g, '') : '';
+      if (idx.cost >= 0 && costRaw && Number(costRaw) > 0) {
+        const manualCost = Number(costRaw);
+        costs = {
+          ...costs,
+          base_item_cost: 0,
+          paper_ink_cost: 0,
+          packaging_cost: 0,
+          total_cost: manualCost,
+          estimated_profit: +(costs.sale_total - manualCost).toFixed(2),
+        };
+      }
 
       toCreate.push({
         sale_date,

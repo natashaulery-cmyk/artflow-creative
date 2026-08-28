@@ -18,6 +18,7 @@ const empty = {
   size: "5x7",
   unit_price: "",
   buyer: "",
+  total_cost: "",
 };
 
 export default function OrderForm({ open, onClose, inventoryCosts }) {
@@ -35,7 +36,18 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
     setSaving(true);
     try {
       const inv = inventoryCosts.find((i) => i.size === form.size);
-      const costs = calculateOrderCosts(form, inv);
+      let costs = calculateOrderCosts(form, inv);
+      if (form.total_cost !== "" && form.total_cost !== null) {
+        const manualCost = Number(form.total_cost) || 0;
+        costs = {
+          ...costs,
+          base_item_cost: 0,
+          paper_ink_cost: 0,
+          packaging_cost: 0,
+          total_cost: manualCost,
+          estimated_profit: +(costs.sale_total - manualCost).toFixed(2),
+        };
+      }
       await base44.entities.Order.create({
         sale_date: form.sale_date,
         platform: form.platform,
@@ -181,6 +193,24 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
                   onChange={(e) => set("sale_date", e.target.value)}
                   className="form-input"
                 />
+              </Field>
+              <Field label="Total Cost (optional)">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-muted-foreground">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={form.total_cost}
+                    onChange={(e) => set("total_cost", e.target.value)}
+                    placeholder="Auto from inventory"
+                    className="form-input pl-8"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Enter a cost to override the auto-calculated cost from inventory.
+                </p>
               </Field>
               <button
                 type="submit"
