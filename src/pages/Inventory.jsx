@@ -6,20 +6,31 @@ import { formatMoney } from "@/lib/format";
 import { calculateUnitCost as calcUnit } from "@/lib/orderCost";
 import { toast } from "sonner";
 import InventoryEditSheet from "@/components/InventoryEditSheet";
+import PullToRefresh from "@/components/PullToRefresh";
 
 const categoryFilters = ["All", "Frame", "Print", "Supply", "Packaging", "Other"];
 
 export default function Inventory() {
-  const { records, loading } = useEntity("InventoryCost", "-created_date");
+  const { records, loading, reload: reloadInventory } = useEntity("InventoryCost", "-created_date");
   const [editRecord, setEditRecord] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [filter, setFilter] = useState("All");
+  const [overrides, setOverrides] = useState({});
+
+  const refresh = async () => { await reloadInventory(); };
 
   const adjustQty = async (rec, delta) => {
     const newQty = Math.max(0, (rec.quantity_on_hand || 0) + delta);
+    const prev = overrides[rec.id] || rec;
+    setOverrides((o) => ({ ...o, [rec.id]: { ...prev, quantity_on_hand: newQty } }));
     try {
       await base44.entities.InventoryCost.update(rec.id, { quantity_on_hand: newQty });
     } catch (e) {
+      setOverrides((o) => {
+        const next = { ...o };
+        delete next[rec.id];
+        return next;
+      });
       toast.error("Could not update quantity");
     }
   };
@@ -34,7 +45,8 @@ export default function Inventory() {
     setFormOpen(true);
   };
 
-  const filtered = records.filter(
+  const displayRecords = records.map((r) => overrides[r.id] || r);
+  const filtered = displayRecords.filter(
     (r) => filter === "All" || (r.category || "Frame") === filter
   );
 
@@ -53,6 +65,7 @@ export default function Inventory() {
 
   return (
     <div className="space-y-5">
+      <PullToRefresh onRefresh={refresh} />
       <header>
         <h1 className="font-heading text-[28px] leading-tight">Inventory</h1>
         <p className="text-muted-foreground text-sm">Stock across all categories</p>

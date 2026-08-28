@@ -59,11 +59,24 @@
 }
 
 @layer base {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
+  }
+  /* Prevent accidental selection / callout menus on interactive chrome in WebView */
+  nav,
+  button,
+  a,
+  [data-icon-container] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 }
 

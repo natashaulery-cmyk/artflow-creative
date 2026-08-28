@@ -4,6 +4,13 @@ import { X, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import Field from "@/components/Field";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 const categories = [
   "Inventory / Frames",
@@ -143,17 +150,21 @@ export default function ExpenseForm({ open, onClose, record }) {
                 />
               </Field>
               <Field label="Category">
-                <select
+                <Select
                   value={form.category}
-                  onChange={(e) => set("category", e.target.value)}
-                  className="form-input"
+                  onValueChange={(v) => set("category", v)}
                 >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="form-input h-14 font-medium">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Amount">

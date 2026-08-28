@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Plus, BarChart3 } from "lucide-react";
+import { Plus, BarChart3, UserCircle } from "lucide-react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/lib/format";
 import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
@@ -8,9 +9,12 @@ import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 const cardLink = "block active:scale-95 transition-transform";
 
 export default function Dashboard() {
-  const { records: orders } = useEntity("Order", "-created_date");
-  const { records: expenses } = useEntity("Expense", "-created_date");
+  const { records: orders, reload: reloadOrders } = useEntity("Order", "-created_date");
+  const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
   const [taxRate] = useTaxRate();
+  const refresh = async () => {
+    await Promise.all([reloadOrders(), reloadExpenses()]);
+  };
 
   const mk = currentMonthKey();
 
@@ -61,11 +65,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-heading text-[28px] leading-tight text-foreground">
-          Affordable Art Co
-        </h1>
-        <p className="text-muted-foreground text-sm">Business Dashboard</p>
+      <PullToRefresh onRefresh={refresh} />
+      <header className="flex items-start justify-between">
+        <div>
+          <h1 className="font-heading text-[28px] leading-tight text-foreground">
+            Affordable Art Co
+          </h1>
+          <p className="text-muted-foreground text-sm">Business Dashboard</p>
+        </div>
+        <Link
+          to="/account"
+          className="w-9 h-9 rounded-full bg-card border border-[hsl(var(--border))] flex items-center justify-center shrink-0"
+          aria-label="Account"
+        >
+          <UserCircle className="w-5 h-5 text-muted-foreground" />
+        </Link>
       </header>
 
       <div className="grid grid-cols-2 gap-3">

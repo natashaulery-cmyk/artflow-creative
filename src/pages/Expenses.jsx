@@ -4,6 +4,7 @@ import { useEntity } from "@/lib/useBusinessData";
 import { formatMoney, formatDate, monthKey, monthLabel } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
 import ExpenseForm from "@/components/ExpenseForm";
+import PullToRefresh from "@/components/PullToRefresh";
 
 const categories = [
   "All",
@@ -20,8 +21,9 @@ const categories = [
 ];
 
 export default function Expenses() {
-  const { records } = useEntity("Expense", "-date");
+  const { records, reload: reloadExpenses } = useEntity("Expense", "-date");
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
+  const refresh = async () => { await reloadExpenses(); };
   const [filter, setFilter] = useState("All");
   const [formOpen, setFormOpen] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
@@ -74,6 +76,7 @@ export default function Expenses() {
 
   return (
     <div className="space-y-5">
+      <PullToRefresh onRefresh={refresh} />
       <header>
         <h1 className="font-heading text-[28px] leading-tight">Expenses</h1>
         <p className="text-muted-foreground text-sm">Track business deductions</p>

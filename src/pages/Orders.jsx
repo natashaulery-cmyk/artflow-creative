@@ -5,11 +5,13 @@ import { base44 } from "@/api/base44Client";
 import { formatMoney, formatDate, currentMonthKey, monthLabel } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
+import PullToRefresh from "@/components/PullToRefresh";
 import { toast } from "sonner";
 
 export default function Orders() {
-  const { records: orders } = useEntity("Order", "-sale_date");
+  const { records: orders, reload: reloadOrders } = useEntity("Order", "-sale_date");
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
+  const refresh = async () => { await reloadOrders(); };
   const initialMonth = new URLSearchParams(window.location.search).get("month");
   const [platformFilter, setPlatformFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState(initialMonth || "All");
@@ -77,6 +79,7 @@ export default function Orders() {
 
   return (
     <div className="space-y-5">
+      <PullToRefresh onRefresh={refresh} />
       <header>
         <h1 className="font-heading text-[28px] leading-tight">Orders</h1>
         <p className="text-muted-foreground text-sm">Sold items across platforms</p>

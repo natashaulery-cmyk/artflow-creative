@@ -20,6 +20,8 @@ import Taxes from '@/pages/Taxes';
 import Reports from '@/pages/Reports';
 import Assistant from '@/pages/Assistant';
 import { Navigate } from 'react-router-dom';
+import { ThemeProvider } from "next-themes";
+import Account from '@/pages/Account';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -61,6 +63,7 @@ const AuthenticatedApp = () => {
           <Route path="/taxes" element={<Taxes />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/assistant" element={<Assistant />} />
+          <Route path="/account" element={<Account />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
@@ -72,15 +75,17 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <ScrollToTop />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

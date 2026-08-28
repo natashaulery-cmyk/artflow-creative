@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
 import { formatMoney } from "@/lib/format";
 import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
+import PullToRefresh from "@/components/PullToRefresh";
 
 const cardLink = "block active:scale-95 transition-transform";
 
@@ -35,10 +37,14 @@ function inPeriod(dateStr, key) {
 }
 
 export default function Reports() {
-  const { records: orders } = useEntity("Order", "-created_date");
-  const { records: expenses } = useEntity("Expense", "-created_date");
+  const navigate = useNavigate();
+  const { records: orders, reload: reloadOrders } = useEntity("Order", "-created_date");
+  const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
   const [period, setPeriod] = useState("thisMonth");
   const [taxRate] = useTaxRate();
+  const refresh = async () => {
+    await Promise.all([reloadOrders(), reloadExpenses()]);
+  };
 
   const calc = useMemo(() => {
     const po = orders.filter((o) => inPeriod(o.sale_date, period));
@@ -78,9 +84,18 @@ export default function Reports() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="font-heading text-[28px] leading-tight">Reports</h1>
-        <p className="text-muted-foreground text-sm">Performance over time</p>
+      <PullToRefresh onRefresh={refresh} />
+      <header className="flex items-center gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 rounded-full bg-card border border-[hsl(var(--border))] flex items-center justify-center"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h1 className="font-heading text-[28px] leading-tight">Reports</h1>
+          <p className="text-muted-foreground text-sm">Performance over time</p>
+        </div>
       </header>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
