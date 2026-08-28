@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import GoogleSheetsConnect from "@/components/GoogleSheetsConnect";
+import GoogleCalendarConnect from "@/components/GoogleCalendarConnect";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -102,6 +103,8 @@ export default function Account() {
       </section>
 
       <GoogleSheetsConnect />
+
+      <GoogleCalendarConnect />
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-1">Sign out</h2>

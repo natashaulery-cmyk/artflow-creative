@@ -52,8 +52,18 @@ export default function ScheduleEventForm({ open, onClose, date, event }) {
         await base44.entities.ScheduleEvent.update(event.id, payload);
         toast.success("Event updated");
       } else {
-        await base44.entities.ScheduleEvent.create(payload);
+        const created = await base44.entities.ScheduleEvent.create(payload);
         toast.success("Event added");
+        try {
+          await base44.functions.invoke("pushScheduleEventToCalendar", {
+            event_id: created.id,
+            title: payload.title,
+            date: payload.date,
+            time: payload.time,
+            type: payload.type,
+            notes: payload.notes,
+          });
+        } catch (e) {}
       }
       onClose();
     } catch (e) {

@@ -26,6 +26,10 @@
     },
     "notes": {
       "type": "string"
+    },
+    "google_event_id": {
+      "type": "string",
+      "description": "ID of the corresponding event on the user's Google Calendar, if synced"
     }
   },
   "required": [
