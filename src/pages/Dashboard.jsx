@@ -75,12 +75,12 @@ export default function Dashboard() {
             sub={`${calc.orderCount} orders · tap to view`}
           />
         </Link>
-        <Link to={`/orders?month=${mk}`} className="block">
+        <Link to="/orders?month=All" className="block">
           <StatCard
             tone="mint"
             label="Estimated Profit"
             value={formatMoney(calc.thisMonthProfit)}
-            sub="tap to view orders"
+            sub="tap to view all"
           />
         </Link>
         <Link to="/expenses" className="block">
