@@ -11,7 +11,7 @@ export default function Orders() {
   const { records: orders } = useEntity("Order", "-sale_date");
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
   const [platformFilter, setPlatformFilter] = useState("All");
-  const [monthFilter, setMonthFilter] = useState(currentMonthKey());
+  const [monthFilter, setMonthFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -54,7 +54,7 @@ export default function Orders() {
   const filtered = useMemo(() => {
     return orders.filter((o) => {
       if (platformFilter !== "All" && o.platform !== platformFilter) return false;
-      if ((o.sale_date || "").slice(0, 7) !== monthFilter) return false;
+      if (monthFilter !== "All" && (o.sale_date || "").slice(0, 7) !== monthFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!`${o.product_name} ${o.order_id || ""}`.toLowerCase().includes(q))
@@ -134,6 +134,16 @@ export default function Orders() {
           </button>
         ))}
         <div className="w-px bg-[hsl(var(--border))] mx-1 my-1" />
+        <button
+          onClick={() => setMonthFilter("All")}
+          className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+            monthFilter === "All"
+              ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          All months
+        </button>
         {months.map((m) => (
           <button
             key={m}
@@ -144,7 +154,7 @@ export default function Orders() {
                 : "bg-muted text-muted-foreground"
             }`}
           >
-            {monthLabel(m).split(" ")[0]}
+            {monthLabel(m)}
           </button>
         ))}
       </div>
