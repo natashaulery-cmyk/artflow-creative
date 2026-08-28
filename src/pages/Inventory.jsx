@@ -18,6 +18,7 @@ export default function Inventory() {
   const [filter, setFilter] = useState("All");
   const [overrides, setOverrides] = useState({});
   const [syncing, setSyncing] = useState(false);
+  const [importingArt, setImportingArt] = useState(false);
 
   const refresh = async () => { await reloadInventory(); };
 
@@ -37,6 +38,27 @@ export default function Inventory() {
       toast.error("Sync failed — connect Google Sheets in Account first");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const importArtFromSheet = async () => {
+    setImportingArt(true);
+    try {
+      const me = await base44.auth.me();
+      const spreadsheetId = me?.spreadsheet_id || me?.data?.spreadsheet_id;
+      if (!spreadsheetId) {
+        toast.error("Add your Google Sheet in Account first");
+        return;
+      }
+      const res = await base44.functions.invoke("importFromSheets", {
+        mode: "artpieces",
+        spreadsheetId,
+      });
+      toast.success(`Imported ${res.data?.imported ?? 0} art piece(s) from your sheet`);
+    } catch (e) {
+      toast.error("Import failed — connect Google Sheets in Account first");
+    } finally {
+      setImportingArt(false);
     }
   };
 
@@ -108,6 +130,14 @@ export default function Inventory() {
           </button>
         }
       />
+
+      <button
+        onClick={importArtFromSheet}
+        disabled={importingArt}
+        className="w-full h-12 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
+      >
+        <RefreshCw className={`w-4 h-4 ${importingArt ? "animate-spin" : ""}`} /> Import Art Pieces from Sheet
+      </button>
 
       <div className="grid grid-cols-4 gap-2">
         {[

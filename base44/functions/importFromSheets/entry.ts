@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { importInventory } from '../../shared/inventorySync.js';
+import { importArtPieces } from '../../shared/artPieceSync.js';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
 // Per-user Google Sheets import. Each authenticated user imports from their
@@ -53,6 +54,10 @@ export default async function(req) {
 
     if (mode === 'inventory') {
       return await importInventory(base44, accessToken, spreadsheetId, sheetName);
+    }
+
+    if (mode === 'artpieces') {
+      return await importArtPieces(base44, accessToken, spreadsheetId, sheetName);
     }
 
     const range = sheetName ? `${sheetName}!A:Z` : 'A:Z';
