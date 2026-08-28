@@ -115,7 +115,7 @@ export default function Inventory() {
                 : "bg-muted text-muted-foreground"
             }`}
           >
-            {c} · {counts[c]}
+            {c} · <span className="text-foreground">{counts[c]}</span>
           </button>
         ))}
       </div>
@@ -156,7 +156,7 @@ export default function Inventory() {
                     )}
                   </div>
                   <p className="font-heading text-xl truncate">{title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-foreground">
                     Base {formatMoney(rec.base_item_cost)} · Unit cost {formatMoney(unitCost)}
                   </p>
                 </div>

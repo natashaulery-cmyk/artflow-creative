@@ -120,7 +120,7 @@ export default function Expenses() {
         <section>
           <div className="flex items-center justify-between mb-2 px-1">
             <h2 className="font-heading text-base">Inventory / Frames</h2>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-foreground">
               {formatMoney(frameTotal)}
             </span>
           </div>
@@ -151,7 +151,7 @@ export default function Expenses() {
         <section key={group.key}>
           <div className="flex items-center justify-between mb-2 px-1">
             <h2 className="font-heading text-base">{group.label}</h2>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-foreground">
               {formatMoney(group.items.reduce((s, e) => s + (e.amount || 0), 0))}
             </span>
           </div>
@@ -171,7 +171,7 @@ export default function Expenses() {
                 <div className="text-right ml-3 shrink-0">
                   <p className="font-heading text-base">{formatMoney(e.amount)}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {e.deductible_percent ?? 100}% ded.
+                    <span className="text-foreground">{e.deductible_percent ?? 100}%</span> ded.
                   </p>
                 </div>
               </button>

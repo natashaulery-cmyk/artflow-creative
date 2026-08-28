@@ -92,7 +92,7 @@ export default function Dashboard() {
             tone="lavender"
             label="This Month Sales"
             value={formatMoney(calc.thisMonthSales)}
-            sub={`${calc.orderCount} orders · tap to view`}
+            sub={<><span className="text-foreground">{calc.orderCount}</span> orders · tap to view</>}
           />
         </Link>
         <Link to="/orders?month=All" className="block">
@@ -116,7 +116,7 @@ export default function Dashboard() {
             tone="yellow"
             label="Tax Reserve"
             value={formatMoney(calc.taxReserve)}
-            sub={`${taxRate}% set aside · tap to view`}
+            sub={<><span className="text-foreground">{taxRate}%</span> set aside · tap to view</>}
           />
         </Link>
       </div>

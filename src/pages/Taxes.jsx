@@ -89,7 +89,7 @@ export default function Taxes() {
           </p>
           <p className="font-heading text-3xl mt-1">{formatMoney(calc.reserve)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {rate}% of taxable business profit
+            <span className="text-foreground">{rate}%</span> of taxable business profit
           </p>
         </div>
         <div className="pastel-blue rounded-3xl p-5 border border-[hsl(var(--border))]">
