@@ -1,4 +1,4 @@
-export const PLATFORMS = ["Vinted", "Depop", "Mercari", "Poshmark", "eBay", "Etsy"];
+export const PLATFORMS = ["Vinted", "Depop", "Mercari", "Poshmark", "eBay", "Etsy", "Stan Store"];
 
 export const PLATFORM_TONE = {
   Vinted: "pastel-lavender text-[hsl(var(--primary))]",
@@ -7,6 +7,7 @@ export const PLATFORM_TONE = {
   Poshmark: "pastel-yellow text-amber-700",
   eBay: "pastel-blue text-slate-600",
   Etsy: "bg-rose-100 text-rose-700",
+  "Stan Store": "bg-violet-100 text-violet-700",
 };
 
 export const PLATFORM_BAR = {
@@ -16,4 +17,5 @@ export const PLATFORM_BAR = {
   Poshmark: "bg-rose-400",
   eBay: "bg-blue-400",
   Etsy: "bg-violet-400",
+  "Stan Store": "bg-violet-500",
 };
