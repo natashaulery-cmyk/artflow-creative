@@ -95,15 +95,10 @@ export default function Assistant() {
     let conv;
     (async () => {
       try {
-        const list = await base44.agents.listConversations({ agent_name: "business_advisor" });
-        if (Array.isArray(list) && list.length > 0) {
-          conv = list[0];
-        } else {
-          conv = await base44.agents.createConversation({
-            agent_name: "business_advisor",
-            metadata: { name: "Business Advisor" },
-          });
-        }
+        conv = await base44.agents.createConversation({
+          agent_name: "business_advisor",
+          metadata: { name: "Business Advisor" },
+        });
         setConversation(conv);
         setMessages(conv.messages || []);
       } catch (e) {
