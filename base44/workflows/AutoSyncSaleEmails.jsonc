@@ -1,0 +1,41 @@
+{
+  "description": "When a new email arrives in Gmail, run the sale-email processor to extract Vinted/Depop orders and create Order records automatically.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_sync_sale_emails",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "process_emails": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processSaleEmails",
+            "args": {
+              "data": "${ .trigger.data }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Process sale emails",
+            "description": "Extract orders from new Gmail messages"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Auto Sync Sale Emails",
+  "trigger": {
+    "condition": "${ .trigger.data.has_new_messages == true }",
+    "config": {
+      "trigger_type": "connector",
+      "events": [
+        "mailbox"
+      ],
+      "integration_type": "gmail",
+      "resource_id": null
+    }
+  }
+}
