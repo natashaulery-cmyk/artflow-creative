@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Minus, Plus, Pencil } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
-import { formatMoney } from "@/lib/orderCost";
+import { formatMoney } from "@/lib/format";
 import { calculateUnitCost as calcUnit } from "@/lib/orderCost";
 import { toast } from "sonner";
 import InventoryEditSheet from "@/components/InventoryEditSheet";
