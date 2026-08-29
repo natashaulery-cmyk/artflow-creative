@@ -29,7 +29,7 @@ import EtsyCallback from '@/pages/EtsyCallback';
 const TabShell = () => null;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
   // Legal pages must be publicly accessible for Google OAuth verification and app users.
   const publicPath = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -60,9 +60,7 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
+      return <Navigate to="/login" replace />;
     }
   }
 
