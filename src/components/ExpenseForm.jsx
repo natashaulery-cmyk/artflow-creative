@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { getCurrentBusinessId } from "@/lib/businessWorkspace";
 import { toast } from "sonner";
 import Field from "@/components/Field";
 import {
@@ -71,7 +72,9 @@ export default function ExpenseForm({ open, onClose, record }) {
     }
     setSaving(true);
     try {
+      const businessId = await getCurrentBusinessId();
       const payload = {
+        business_id: record?.business_id || businessId,
         date: form.date,
         description: form.description,
         category: form.category,
