@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/AuthContext";
 import BusinessManager from "@/components/BusinessManager";
 import ThemeSettings from "@/components/ThemeSettings";
 import EtsyConnectionCard from "@/components/EtsyConnectionCard";
+import VintedConnectionCard from "@/components/VintedConnectionCard";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -53,6 +54,8 @@ export default function Account() {
       <BusinessManager />
 
       <EtsyConnectionCard />
+
+      <VintedConnectionCard />
 
       <ThemeSettings />
 
