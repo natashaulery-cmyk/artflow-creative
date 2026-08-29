@@ -131,6 +131,10 @@ export default function Login() {
         <Link to="/terms" className="text-primary hover:underline">
           Terms of Service
         </Link>
+        {" · "}
+        <Link to="/privacy" className="text-primary hover:underline">
+          Privacy Policy
+        </Link>
       </p>
     </AuthLayout>
   );
