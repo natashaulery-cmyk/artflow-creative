@@ -13,7 +13,7 @@ export default async function(req) {
 
     const allOrders = await base44.asServiceRole.entities.Order.list('-sale_date', 5000);
     const currentEmail = String(me.email || '').trim().toLowerCase();
-    const orders = allOrders
+    const matchingOrders = allOrders
       .filter((o) => o.archived !== true)
       .filter((o) => {
         if (o.business_id === businessId) return true;
@@ -21,10 +21,28 @@ export default async function(req) {
         return (o.access_emails || []).some(
           (email) => String(email || '').trim().toLowerCase() === currentEmail
         );
+      });
+
+    // Historical imports created duplicate physical rows for some marketplace
+    // emails. Collapse only exact sale-line duplicates here so totals and the UI
+    // remain accurate while preserving legitimate multi-item orders that share
+    // one marketplace order/email id but have different products.
+    const normalize = (value = '') => String(value).trim().toLowerCase().replace(/\s+/g, ' ');
+    const seen = new Set();
+    const orders = matchingOrders
+      .filter((o) => {
+        const stableId = o.source_email_id || o.order_id || '';
+        const key = stableId
+          ? [o.platform || '', stableId, normalize(o.product_name || ''), Number(o.sale_total || 0).toFixed(2)].join('|')
+          : [o.platform || '', o.sale_date || '', normalize(o.product_name || ''), Number(o.sale_total || 0).toFixed(2), Number(o.quantity || 1)].join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       })
       .sort((a, b) => String(b.sale_date || '').localeCompare(String(a.sale_date || '')));
 
-    return Response.json({ orders, business_id: businessId, count: orders.length });
+    const item_count = orders.reduce((sum, order) => sum + Math.max(1, Number(order.quantity) || 1), 0);
+    return Response.json({ orders, business_id: businessId, count: orders.length, item_count });
   } catch (error) {
     return Response.json({ error: error?.message || 'Could not load business orders' }, { status: 500 });
   }
