@@ -23,8 +23,12 @@ export default function Orders() {
   // This tab stays mounted between visits. Reset it to the newest month whenever
   // the user opens Orders so an older selection such as January cannot persist.
   useEffect(() => {
-    if (pathname === "/orders") setMonthFilter(currentMonthKey());
-  }, [pathname]);
+    if (pathname === "/orders") {
+      setMonthFilter(currentMonthKey());
+      setPlatformFilter("All");
+      reloadOrders();
+    }
+  }, [pathname, reloadOrders]);
   const [search, setSearch] = useState("");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [importingEmail, setImportingEmail] = useState(false);
