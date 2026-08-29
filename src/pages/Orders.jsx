@@ -37,11 +37,25 @@ export default function Orders() {
   const importEmailSales = async () => {
     setImportingEmail(true);
     try {
-      const res = await base44.functions.invoke("processSaleEmails", {});
-      toast.success(res.data?.message || "Email sales checked");
+      let res = await base44.functions.invoke("processSaleEmails", {});
+      let data = res?.data || {};
+      let pass = 0;
+
+      // Keep draining bounded backend batches so a user with hundreds of older
+      // orders does not have to press Sync repeatedly or wait minutes between runs.
+      while (Number(data.remaining || 0) > 0 && pass < 12) {
+        if (/already running/i.test(String(data.message || ""))) break;
+        await reloadOrders();
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        res = await base44.functions.invoke("processSaleEmails", {});
+        data = res?.data || {};
+        pass += 1;
+      }
+
+      toast.success(data.message || "All available sales are synced");
       await reloadOrders();
     } catch (e) {
-      toast.error("Email import failed", { description: e?.response?.data?.error || e?.message });
+      toast.error("Sales sync failed", { description: e?.response?.data?.error || e?.message });
     } finally {
       setImportingEmail(false);
     }
@@ -136,7 +150,7 @@ export default function Orders() {
         className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
       >
         <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
-        {importingEmail ? "Checking sales emails…" : "Import Sales from Email"}
+        {importingEmail ? "Syncing all sales…" : "Sync All Sales Now"}
       </button>
 
       <div className="relative">
