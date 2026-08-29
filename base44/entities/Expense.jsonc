@@ -9,13 +9,24 @@
     "category": {
       "type": "string",
       "enum": [
+        "Art Materials & Supplies",
+        "Paper & Print Media",
+        "Ink & Printing Supplies",
+        "Frames & Display",
+        "Packaging & Shipping Supplies",
+        "Equipment & Tools",
+        "Photography Equipment",
+        "Software & Subscriptions",
+        "Phone / Internet",
+        "Advertising & Marketing",
+        "Shipping & Postage",
+        "Office & Business",
+        "Other Business Expense",
         "Inventory / Frames",
         "Printing Supplies",
         "Packaging",
         "Equipment",
         "Office Expense",
-        "Software & Subscriptions",
-        "Phone / Internet",
         "Advertising",
         "Shipping",
         "Other"
@@ -51,6 +62,25 @@
     "sync_source": {
       "type": "string",
       "description": "Where the row came from, such as google_sheet or manual"
+    },
+    "business_id": {
+      "type": "string",
+      "description": "Business workspace that owns this expense"
+    },
+    "access_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails allowed to access this expense"
+    },
+    "auto_classified": {
+      "type": "boolean",
+      "description": "Whether this expense was automatically classified from email"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Automatic expense-classification confidence"
     }
   },
   "required": [
@@ -61,13 +91,40 @@
   ],
   "rls": {
     "read": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        },
+        {
+          "data.access_emails": "{{user.email}}"
+        }
+      ]
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        },
+        {
+          "data.access_emails": "{{user.email}}"
+        }
+      ]
     },
     "delete": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        }
+      ]
     }
   }
 }
