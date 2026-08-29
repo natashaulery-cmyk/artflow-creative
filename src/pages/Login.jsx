@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +19,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
+      const { base44 } = await import("@/api/base44Client");
       await base44.auth.loginViaEmailPassword(email.trim(), password);
       window.location.href = returnTo;
     } catch (err) {
@@ -31,7 +31,9 @@ export default function Login() {
 
   const handleGoogleLogin = () => {
     setError("");
-    base44.auth.redirectToLogin(returnTo);
+    import("@/api/base44Client")
+      .then(({ base44 }) => base44.auth.redirectToLogin(returnTo))
+      .catch((err) => setError(err?.message || "Google sign-in is unavailable right now."));
   };
 
   return (

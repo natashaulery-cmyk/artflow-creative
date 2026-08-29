@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +27,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
+      const { base44 } = await import("@/api/base44Client");
       await base44.auth.register({ email, password });
       setShowOtp(true);
     } catch (err) {
@@ -41,6 +41,7 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
+      const { base44 } = await import("@/api/base44Client");
       const result = await base44.auth.verifyOtp({ email, otpCode });
       if (result?.access_token) {
         base44.auth.setToken(result.access_token);
@@ -56,6 +57,7 @@ export default function Register() {
   const handleResend = async () => {
     setError("");
     try {
+      const { base44 } = await import("@/api/base44Client");
       await base44.auth.resendOtp(email);
       toast({
         title: "Code sent",
