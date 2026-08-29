@@ -10,6 +10,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
+import Terms from '@/pages/Terms';
 import Layout from '@/components/Layout';
 import Taxes from '@/pages/Taxes';
 import Reports from '@/pages/Reports';
@@ -53,6 +54,7 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/terms" element={<Terms />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
           <Route path="/" element={<TabShell />} />
