@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
         <div className="space-y-7 text-sm leading-7">
           <section>
             <p>
-              Art Flow Creative is a business-management application for artists and creative sellers. This Privacy Policy explains what information may be collected or processed when you use the application, including when you choose to connect third-party services such as Google Sheets or Gmail.
+              Art Flow Creative is a business-management application for artists and creative sellers. This Privacy Policy explains what information may be collected or processed when you use the application, including when you choose to connect Gmail for email-based sales and expense importing.
             </p>
           </section>
 
@@ -28,7 +28,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-xl font-semibold mb-2">Google account data</h2>
             <p>
-              If you choose to connect Google Sheets, Art Flow Creative may request permission to read and write spreadsheet data so that your app records can be imported, synchronized, or updated. If you separately enable Gmail-based sales syncing, the app may request limited Gmail access needed to read relevant sales or order emails. Google access is optional and is only used to provide the features you choose to enable.
+              If you enable Gmail-based importing, Art Flow Creative may request limited Gmail access needed to read relevant marketplace sale emails and expense emails you intentionally mark for importing. Google access is optional and is only used to provide the features you choose to enable.
             </p>
           </section>
 
