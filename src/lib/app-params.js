@@ -35,9 +35,19 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 }
 
 const getAppParams = () => {
-	if (getAppParamValue("clear_access_token", { removeFromUrl: true }) === 'true') {
+	// clear_access_token is a one-time command, not a persistent app setting.
+	// Never save it to localStorage or it will keep clearing every future login.
+	const urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.get('clear_access_token') === 'true') {
 		storage.removeItem('base44_access_token');
 		storage.removeItem('token');
+		storage.removeItem('base44_clear_access_token');
+		urlParams.delete('clear_access_token');
+		const cleanedUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}${window.location.hash}`;
+		window.history.replaceState({}, document.title, cleanedUrl);
+	} else {
+		// Clean up the bad persisted flag created by older builds.
+		storage.removeItem('base44_clear_access_token');
 	}
 	return {
 		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID }),
