@@ -23,6 +23,8 @@ export function useEntity(entityName, sort = "-created_date", limit = 1000) {
   useEffect(() => {
     let unsub;
     reload();
+    const onSynced = () => reload();
+    window.addEventListener("artflow:data-synced", onSynced);
     if (typeof entity.subscribe === "function") {
       unsub = entity.subscribe((event) => {
         setRecords((prev) => {
@@ -41,6 +43,7 @@ export function useEntity(entityName, sort = "-created_date", limit = 1000) {
       });
     }
     return () => {
+      window.removeEventListener("artflow:data-synced", onSynced);
       if (unsub) unsub();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
