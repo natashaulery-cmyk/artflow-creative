@@ -30,6 +30,10 @@
     "business_id": {
       "type": "string",
       "description": "Business workspace this import belongs to"
+    },
+    "parser_version": {
+      "type": "number",
+      "description": "Sale parser version used for this review so skipped emails can be safely retried after parser improvements"
     }
   },
   "required": [
