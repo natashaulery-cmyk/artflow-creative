@@ -21,12 +21,26 @@ import Account from '@/pages/Account';
 import Calendar from '@/pages/Calendar';
 import Gallery from '@/pages/Gallery';
 import Mileage from '@/pages/Mileage';
+import PrivacyPolicy from '@/pages/PrivacyPolicy';
+import TermsOfService from '@/pages/TermsOfService';
 // Add page imports here
 
 const TabShell = () => null;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+
+  // Legal pages must be publicly accessible for Google OAuth verification and app users.
+  const publicPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (publicPath === '/privacy-policy' || publicPath === '/terms-of-service') {
+    return (
+      <Routes>
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="*" element={<Navigate to="/privacy-policy" replace />} />
+      </Routes>
+    );
+  }
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -54,6 +68,8 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/terms" element={<Terms />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
