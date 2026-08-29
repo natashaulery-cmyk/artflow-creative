@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentBusinessId } from "@/lib/businessWorkspace";
+import { getCurrentBusinessWorkspace } from "@/lib/businessWorkspace";
 import { toast } from "sonner";
 import Field from "@/components/Field";
+import { EXPENSE_CATEGORIES } from "@/lib/expenseCategories";
 import {
   Select,
   SelectTrigger,
@@ -13,23 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const categories = [
-  "Inventory / Frames",
-  "Printing Supplies",
-  "Packaging",
-  "Equipment",
-  "Office Expense",
-  "Software & Subscriptions",
-  "Phone / Internet",
-  "Advertising",
-  "Shipping",
-  "Other",
-];
-
 const empty = {
   date: new Date().toISOString().slice(0, 10),
   description: "",
-  category: "Inventory / Frames",
+  category: "Art Materials & Supplies",
   amount: "",
   deductible_percent: 100,
   notes: "",
@@ -46,7 +34,7 @@ export default function ExpenseForm({ open, onClose, record }) {
           ? {
               date: record.date || new Date().toISOString().slice(0, 10),
               description: record.description || "",
-              category: record.category || "Inventory / Frames",
+              category: record.category || "Art Materials & Supplies",
               amount: record.amount != null ? String(record.amount) : "",
               deductible_percent: record.deductible_percent ?? 100,
               notes: record.notes || "",
@@ -72,9 +60,10 @@ export default function ExpenseForm({ open, onClose, record }) {
     }
     setSaving(true);
     try {
-      const businessId = await getCurrentBusinessId();
+      const workspace = await getCurrentBusinessWorkspace();
       const payload = {
-        business_id: record?.business_id || businessId,
+        business_id: record?.business_id || workspace.businessId,
+        access_emails: record?.access_emails || workspace.accessEmails,
         date: form.date,
         description: form.description,
         category: form.category,
@@ -161,7 +150,7 @@ export default function ExpenseForm({ open, onClose, record }) {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((c) => (
+                    {EXPENSE_CATEGORIES.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>
