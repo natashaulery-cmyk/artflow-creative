@@ -28,7 +28,6 @@ export default function Orders() {
   }, [monthParam]);
   const [search, setSearch] = useState("");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
-  const [syncing, setSyncing] = useState(false);
   const [importingEmail, setImportingEmail] = useState(false);
 
   const importEmailSales = async () => {
@@ -41,24 +40,6 @@ export default function Orders() {
       toast.error("Email import failed", { description: e?.response?.data?.error || e?.message });
     } finally {
       setImportingEmail(false);
-    }
-  };
-
-  const syncSpreadsheet = async () => {
-    setSyncing(true);
-    try {
-      const res = await base44.functions.invoke("reconcileFromSheets", {});
-      const totals = res.data?.totals;
-      toast.success(
-        totals
-          ? `Spreadsheet synced — ${res.data?.orders || 0} sales rows, $${Number(totals.sales || 0).toFixed(2)} total sales`
-          : "Spreadsheet synced"
-      );
-      await reloadOrders();
-    } catch (e) {
-      toast.error("Spreadsheet sync failed", { description: e?.response?.data?.error || e?.message });
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -148,23 +129,14 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <button
-          onClick={importEmailSales}
-          disabled={importingEmail}
-          className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
-        >
-          <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
-          {importingEmail ? "Checking sales emails…" : "Import Sales from Email"}
-        </button>
-        <button
-          onClick={syncSpreadsheet}
-          disabled={syncing}
-          className="w-full h-10 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-xs font-medium disabled:opacity-60"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} /> Sync Spreadsheet
-        </button>
-      </div>
+      <button
+        onClick={importEmailSales}
+        disabled={importingEmail}
+        className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
+      >
+        <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
+        {importingEmail ? "Checking sales emails…" : "Import Sales from Email"}
+      </button>
 
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
