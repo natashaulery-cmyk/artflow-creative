@@ -194,6 +194,15 @@ export default function GoogleSheetsConnect() {
           )}
 
           <button
+            onClick={handleConnect}
+            disabled={connecting}
+            className="w-full h-10 rounded-2xl text-sm text-foreground font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            {connecting ? "Opening Google…" : "Switch Google account"}
+          </button>
+
+          <button
             onClick={handleDisconnect}
             className="w-full h-10 rounded-2xl text-sm text-muted-foreground font-medium"
           >
