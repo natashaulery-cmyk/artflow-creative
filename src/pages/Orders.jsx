@@ -155,7 +155,7 @@ export default function Orders() {
           className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
         >
           <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
-          {importingEmail ? "Checking Vinted & Depop…" : "Import Vinted & Depop Sales"}
+          {importingEmail ? "Checking sales emails…" : "Import Sales from Email"}
         </button>
         <button
           onClick={syncSpreadsheet}
