@@ -231,11 +231,13 @@ export default async function(req) {
     }
     await saveSyncState(base44, ownerId, businessId, { status: 'running', message: 'Syncing sales emails…' });
 
-    // Search sender text rather than exact domains. Marketplace providers sometimes
-    // change subdomains / sender addresses, and exact-domain searches can silently
-    // miss valid sales (especially Depop). Gmail returns these newest-first, which
-    // lets fresh orders land before historical backfill work.
-    const query = 'after:2026/01/01 {from:vinted from:depop from:etsy from:poshmark from:ebay}';
+    // Once historical backfill is caught up, only scan a small recent window instead
+    // of relisting every marketplace email since January on every foreground sync.
+    // Keep a 7-day overlap so delayed emails and parser retries are still picked up.
+    const caughtUp = !!priorState && Number(priorState.last_remaining || 0) === 0;
+    const query = caughtUp
+      ? 'newer_than:7d {from:vinted from:depop from:etsy from:poshmark from:ebay}'
+      : 'after:2026/01/01 {from:vinted from:depop from:etsy from:poshmark from:ebay}';
     const allMessageIds = [];
     let pageToken = '';
     do {
