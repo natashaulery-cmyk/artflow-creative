@@ -25,7 +25,7 @@ export default async function(req) {
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
-    const query = 'newer_than:120d (from:vinted.com OR from:depop.com OR from:etsy.com OR from:poshmark.com OR from:ebay.com) (sold OR sale OR order)';
+    const query = 'after:2026/01/01 (from:vinted.com OR from:depop.com OR from:etsy.com OR from:poshmark.com OR from:ebay.com) (sold OR sale OR order)';
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`,
       { headers }
