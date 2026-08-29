@@ -46,6 +46,18 @@ const AuthenticatedApp = () => {
     );
   }
 
+  // Login and recovery pages must render even while authentication is broken or unresolved.
+  if (publicPath === '/login' || publicPath === '/register' || publicPath === '/forgot-password') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
