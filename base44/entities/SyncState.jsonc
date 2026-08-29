@@ -1,0 +1,53 @@
+{
+  "name": "SyncState",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "gmail_sales",
+        "gmail_expenses"
+      ]
+    },
+    "last_synced_at": {
+      "type": "string"
+    },
+    "last_found": {
+      "type": "number"
+    },
+    "last_processed": {
+      "type": "number"
+    },
+    "last_created": {
+      "type": "number"
+    },
+    "last_remaining": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "running",
+        "error"
+      ]
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id",
+    "source",
+    "last_synced_at",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "data.business_id": "{{user.data.active_business_id}}"
+    }
+  }
+}
