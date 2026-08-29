@@ -20,12 +20,12 @@ export default function Orders() {
   const refresh = async () => { await reloadOrders(); };
   const { pathname } = useLocation();
   const [platformFilter, setPlatformFilter] = useState("All");
-  const [monthFilter, setMonthFilter] = useState(currentMonthKey());
+  const [monthFilter, setMonthFilter] = useState("All");
   // This tab stays mounted between visits. Reset it to the newest month whenever
   // the user opens Orders so an older selection such as January cannot persist.
   useEffect(() => {
     if (pathname === "/orders") {
-      setMonthFilter(currentMonthKey());
+      setMonthFilter("All");
       setPlatformFilter("All");
       reloadOrders();
     }
@@ -94,7 +94,8 @@ export default function Orders() {
   const summary = useMemo(() => {
     const sales = filtered.reduce((s, o) => s + (o.sale_total || 0), 0);
     const profit = filtered.reduce((s, o) => s + (o.estimated_profit || 0), 0);
-    return { sales, profit, count: filtered.length };
+    const count = filtered.reduce((s, o) => s + Math.max(1, Number(o.quantity) || 1), 0);
+    return { sales, profit, count };
   }, [filtered]);
 
   return (
