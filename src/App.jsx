@@ -110,6 +110,36 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  const isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password';
+  const isLegalPage = path === '/privacy' || path === '/privacy-policy' || path === '/terms-of-service' || path === '/terms' || path === '/support';
+
+  // Render public/auth recovery pages without mounting AuthProvider at all.
+  // This guarantees they still render even if the external Google/Base44 auth
+  // configuration is broken or throws before auth state can initialize.
+  if (isAuthPage || isLegalPage) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <ScrollToTop />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/terms" element={<Navigate to="/terms-of-service" replace />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
