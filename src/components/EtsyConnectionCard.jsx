@@ -9,11 +9,22 @@ export default function EtsyConnectionCard() {
   const [connecting, setConnecting] = useState(false);
 
   const load = async () => {
+    const fallback = { configured: true, connected: false };
     try {
-      const res = await base44.functions.invoke("etsyConnectionStatus", {});
-      setStatus(res?.data || { configured: false, connected: false });
-    } catch {}
-    setLoading(false);
+      const timeout = new Promise((_, reject) =>
+        window.setTimeout(() => reject(new Error("Etsy status timeout")), 5000)
+      );
+      const res = await Promise.race([
+        base44.functions.invoke("etsyConnectionStatus", {}),
+        timeout,
+      ]);
+      setStatus(res?.data || fallback);
+    } catch {
+      // Never let a marketplace status check block Account from rendering.
+      setStatus(fallback);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
