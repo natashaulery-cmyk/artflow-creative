@@ -1,0 +1,40 @@
+{
+  "name": "EmailImportMessage",
+  "type": "object",
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "description": "Gmail message ID already reviewed by an importer"
+    },
+    "import_type": {
+      "type": "string",
+      "enum": [
+        "sale",
+        "expense"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "imported",
+        "skipped",
+        "error"
+      ]
+    },
+    "platform": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "business_id": {
+      "type": "string",
+      "description": "Business workspace this import belongs to"
+    }
+  },
+  "required": [
+    "message_id",
+    "import_type",
+    "status"
+  ]
+}

@@ -60,9 +60,21 @@ export default function Reports() {
     const productCosts = po.reduce((s, o) => s + (o.total_cost || 0), 0);
     const bizExpenses = pe.reduce((s, e) => s + (e.amount || 0), 0);
     const estimatedProfit = po.reduce((s, o) => s + (o.estimated_profit || 0), 0);
+    const netProfit = grossSales - productCosts - bizExpenses;
+    const expenseCount = pe.length;
     const deductions = pe.reduce((s, e) => s + (e.deductible_amount || 0), 0);
     const taxableProfit = estimatedProfit - deductions;
     const taxReserve = Math.max(0, taxableProfit) * (taxRate / 100);
+
+    const expenseCategories = Object.entries(
+      pe.reduce((acc, e) => {
+        const category = e.category || "Other";
+        acc[category] = (acc[category] || 0) + (e.amount || 0);
+        return acc;
+      }, {})
+    )
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount);
 
     const platformSales = PLATFORMS.map((p) => ({
       platform: p,
@@ -77,7 +89,10 @@ export default function Reports() {
       itemsSold,
       productCosts,
       bizExpenses,
+      expenseCount,
+      expenseCategories,
       estimatedProfit,
+      netProfit,
       taxableProfit,
       taxReserve,
       platformSales,
@@ -134,10 +149,10 @@ export default function Reports() {
           <StatCard tone="peach" label="Product Costs" value={formatMoney(calc.productCosts)} sub="tap to view inventory" />
         </Link>
         <Link to="/expenses" className={cardLink}>
-          <StatCard tone="yellow" label="Business Expenses" value={formatMoney(calc.bizExpenses)} sub="tap to view expenses" />
+          <StatCard tone="yellow" label="Business Expenses" value={formatMoney(calc.bizExpenses)} sub={`${calc.expenseCount} expense${calc.expenseCount === 1 ? "" : "s"}`} />
         </Link>
-        <Link to="/orders" className={cardLink}>
-          <StatCard tone="mint" label="Estimated Profit" value={formatMoney(calc.estimatedProfit)} sub="tap to view orders" />
+        <Link to="/expenses" className={cardLink}>
+          <StatCard tone="mint" label="Net Profit" value={formatMoney(calc.netProfit)} sub="sales minus product costs & expenses" />
         </Link>
         <Link to="/taxes" className={cardLink}>
           <StatCard tone="lavender" label="Taxable Profit" value={formatMoney(calc.taxableProfit)} sub="tap to view taxes" />
@@ -160,7 +175,30 @@ export default function Reports() {
         ))}
       </section>
 
-      {calc.numOrders === 0 && <EmptyRow text="No orders in this period" />}
+      <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-heading text-lg">Expense Breakdown</h2>
+          <Link to="/expenses" className="text-sm text-[hsl(var(--primary))] font-medium">View expenses</Link>
+        </div>
+        {calc.expenseCategories.length > 0 ? (
+          <div className="space-y-3">
+            {calc.expenseCategories.map(({ category, amount }) => (
+              <div key={category} className="flex items-center justify-between gap-4">
+                <span className="text-sm text-muted-foreground">{category}</span>
+                <span className="text-sm font-semibold text-foreground">{formatMoney(amount)}</span>
+              </div>
+            ))}
+            <div className="pt-3 mt-3 border-t border-[hsl(var(--border))] flex items-center justify-between">
+              <span className="text-sm font-semibold text-foreground">Total expenses</span>
+              <span className="font-heading text-lg text-foreground">{formatMoney(calc.bizExpenses)}</span>
+            </div>
+          </div>
+        ) : (
+          <EmptyRow text="No expenses in this period" />
+        )}
+      </section>
+
+      {calc.numOrders === 0 && calc.expenseCount === 0 && <EmptyRow text="No sales or expenses in this period" />}
     </div>
   );
 }
