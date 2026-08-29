@@ -8,6 +8,24 @@
     },
     "notes": {
       "type": "string"
+    },
+    "primary_email": {
+      "type": "string",
+      "description": "Primary owner/contact email for this business workspace"
+    },
+    "member_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails allowed to access this business workspace"
+    },
+    "sales_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Email accounts used to import marketplace sales for this business"
     }
   },
   "required": [
@@ -15,13 +33,43 @@
   ],
   "rls": {
     "read": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.member_emails": "{{user.email}}"
+        },
+        {
+          "data.sales_emails": "{{user.email}}"
+        },
+        {
+          "data.primary_email": "{{user.email}}"
+        }
+      ]
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.member_emails": "{{user.email}}"
+        },
+        {
+          "data.primary_email": "{{user.email}}"
+        }
+      ]
     },
     "delete": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.primary_email": "{{user.email}}"
+        }
+      ]
     }
   }
 }
