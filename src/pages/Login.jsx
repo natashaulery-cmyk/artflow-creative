@@ -41,13 +41,7 @@ export default function Login() {
       subtitle="Log in to your Art Flow Creative account"
       footer={
         <>
-          Don't have an account?{" "}
-          <Link
-            to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="text-primary font-medium hover:underline"
-          >
-            Create one
-          </Link>
+          Use Google if that is how you originally created your Art Flow Creative account.
         </>
       }
     >
