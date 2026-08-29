@@ -63,6 +63,48 @@ export default async function(req) {
       base44.asServiceRole.entities.EmailImportMessage.list('-created_date', 5000),
     ]);
 
+    // Consolidate older Gmail imports that were accidentally owned by the
+    // admin or workflow service account. Base44 ownership is immutable, so
+    // recreate each unique sale under the connected Gmail user and archive
+    // the old copy.
+    const targetEmailIds = new Set(
+      existingOrders
+        .filter((o) => o.created_by_id === ownerId && !o.archived)
+        .map((o) => o.source_email_id)
+        .filter(Boolean)
+    );
+    const migratedEmailIds = new Set();
+    for (const oldOrder of existingOrders.filter(
+      (o) => o.sync_source === 'gmail' && o.created_by_id !== ownerId && !o.archived
+    )) {
+      const emailId = oldOrder.source_email_id;
+      if (emailId && !targetEmailIds.has(emailId) && !migratedEmailIds.has(emailId)) {
+        await base44.asServiceRole.entities.Order.create({
+          sale_date: oldOrder.sale_date,
+          platform: oldOrder.platform,
+          order_id: oldOrder.order_id || null,
+          product_name: oldOrder.product_name,
+          quantity: oldOrder.quantity,
+          size: oldOrder.size,
+          unit_price: oldOrder.unit_price,
+          sale_total: oldOrder.sale_total,
+          buyer: oldOrder.buyer || null,
+          source_email_id: emailId,
+          base_item_cost: oldOrder.base_item_cost || 0,
+          paper_ink_cost: oldOrder.paper_ink_cost || 0,
+          packaging_cost: oldOrder.packaging_cost || 0,
+          total_cost: oldOrder.total_cost || 0,
+          estimated_profit: oldOrder.estimated_profit || 0,
+          archived: false,
+          sync_source: 'gmail',
+          created_by_id: ownerId,
+        });
+        migratedEmailIds.add(emailId);
+        targetEmailIds.add(emailId);
+      }
+      await base44.asServiceRole.entities.Order.update(oldOrder.id, { archived: true });
+    }
+
     const completedEmailIds = new Set(
       importHistory
         .filter((item) => item.import_type === 'sale' && item.status !== 'error')
