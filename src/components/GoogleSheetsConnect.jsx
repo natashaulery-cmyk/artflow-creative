@@ -44,27 +44,26 @@ export default function GoogleSheetsConnect() {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectUrl = await base44.connectors.connectAppUser(
-        GOOGLE_SHEETS_CONNECTOR_ID
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Google connection timed out. Please try again.")), 12000)
       );
-      // Open in a popup so we can detect when OAuth completes and auto-refresh.
-      const popup = window.open(redirectUrl, "_blank", "width=500,height=650");
-      setConnecting(false);
-      if (popup) {
-        const timer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(timer);
-            refresh();
-          }
-        }, 500);
-      } else {
-        // Popup blocked — fall back to full-page redirect.
-        window.location.href = redirectUrl;
+
+      const redirectUrl = await Promise.race([
+        base44.connectors.connectAppUser(GOOGLE_SHEETS_CONNECTOR_ID),
+        timeout,
+      ]);
+
+      if (!redirectUrl) {
+        throw new Error("Google did not return an authorization link.");
       }
+
+      // Use a full-page redirect. This is much more reliable on iPhone/Safari
+      // than opening OAuth after an async request in a popup.
+      window.location.assign(redirectUrl);
     } catch (e) {
       setConnecting(false);
       toast.error("Could not start Google Sheets connection", {
-        description: e?.message,
+        description: e?.message || "Please try again.",
       });
     }
   };
