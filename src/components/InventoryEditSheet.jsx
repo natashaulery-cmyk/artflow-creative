@@ -95,13 +95,8 @@ export default function InventoryEditSheet({ open, onClose, record }) {
       };
       payload.total_unit_cost = calculateUnitCost(payload);
       if (isCreate) {
-        const created = await base44.entities.InventoryCost.create(payload);
+        await base44.entities.InventoryCost.create(payload);
         toast.success("Inventory item added");
-        base44.functions
-          .invoke("appendInventoryToSheet", { inventory_id: created.id })
-          .catch(() =>
-            toast("Not synced to Google Sheets — connect it in Account")
-          );
       } else {
         await base44.entities.InventoryCost.update(record.id, payload);
         toast.success("Inventory updated");
