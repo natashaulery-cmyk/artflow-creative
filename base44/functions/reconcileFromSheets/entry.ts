@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
 const ORDER_SHEET = 'Orders';
 const DEDUCTIONS_SHEET = 'Deductions';
@@ -66,16 +67,22 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') {
-      return Response.json({ error: 'Spreadsheet reconciliation is available to the app owner only.' }, { status: 403 });
-    }
-
     const spreadsheetId = user.spreadsheet_id || user.data?.spreadsheet_id;
     if (!spreadsheetId) {
       return Response.json({ error: 'No spreadsheet is saved on this account.' }, { status: 400 });
     }
 
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlesheets');
+    let accessToken;
+    try {
+      ({ accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(
+        GOOGLE_SHEETS_CONNECTOR_ID
+      ));
+    } catch {
+      return Response.json(
+        { error: 'Connect your Google Sheets account in Account before syncing.' },
+        { status: 409 }
+      );
+    }
 
     // Fetch and validate everything before changing app data.
     const [orderRows, deductionRows, expenseRows] = await Promise.all([
@@ -189,8 +196,8 @@ export default async function(req) {
       }
     }
 
-    // Exact rebuild for this signed-in owner. This removes demo rows, duplicate
-    // email imports, and bad historical dates so the app matches the tracker.
+    // Exact rebuild for this signed-in user only. Row-level security plus the
+    // created_by_id filter keeps every customer's spreadsheet data isolated.
     await base44.asServiceRole.entities.Order.deleteMany({ created_by_id: user.id });
     await base44.asServiceRole.entities.Expense.deleteMany({ created_by_id: user.id });
 
