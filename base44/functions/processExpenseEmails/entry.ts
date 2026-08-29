@@ -65,15 +65,19 @@ export default async function(req) {
       return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
     }
 
-    // Search broadly for purchase/receipt language so an artist is not limited to
-    // a hard-coded retailer or supply list. The classifier below decides whether
-    // each purchase is actually related to the art business.
+    // Historical expense discovery needs a broad window only until the workspace is
+    // caught up. Normal hourly/login refreshes use a 14-day overlap so Gmail listing
+    // work stays small while still catching delayed receipts and forwarded expenses.
+    const states = await base44.asServiceRole.entities.SyncState.list('-last_synced_at', 100).catch(() => []);
+    const priorState = states.find((item) => item.business_id === businessId && item.source === 'gmail_expenses');
+    const caughtUp = !!priorState && Number(priorState.last_remaining || 0) === 0;
     const lookback = new Date();
     lookback.setMonth(lookback.getMonth() - 18);
     const afterDate = lookback.toISOString().slice(0, 10).replace(/-/g, '/');
+    const dateFilter = caughtUp ? 'newer_than:14d' : `after:${afterDate}`;
     const queries = [
-      `after:${afterDate} subject:"ArtFlow Expense"`,
-      `after:${afterDate} {subject:receipt subject:ordered subject:"order confirmation" subject:"order received" subject:"purchase confirmation" subject:invoice subject:"payment successful" subject:"payment received" subject:"your order"}`,
+      `${dateFilter} subject:"ArtFlow Expense"`,
+      `${dateFilter} {subject:receipt subject:ordered subject:"order confirmation" subject:"order received" subject:"purchase confirmation" subject:invoice subject:"payment successful" subject:"payment received" subject:"your order"}`,
     ];
     const allIds = [];
     const idSet = new Set();
