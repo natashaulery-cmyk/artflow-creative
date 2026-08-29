@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 import { useEntity } from "@/lib/useBusinessData";
 import { formatMoney, formatDate, monthKey, monthLabel } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
@@ -31,6 +33,20 @@ export default function Expenses() {
   const [filter, setFilter] = useState("All");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [editRecord, setEditRecord] = useState(null);
+  const [importingEmail, setImportingEmail] = useState(false);
+
+  const importForwardedExpenses = async () => {
+    setImportingEmail(true);
+    try {
+      const res = await base44.functions.invoke("processExpenseEmails", {});
+      toast.success(res.data?.message || "Expense emails checked");
+      await reloadExpenses();
+    } catch (e) {
+      toast.error("Expense import failed", { description: e?.response?.data?.error || e?.message });
+    } finally {
+      setImportingEmail(false);
+    }
+  };
 
   const frameItems = useMemo(
     () =>
@@ -99,6 +115,21 @@ export default function Expenses() {
           </div>
         }
       />
+
+      <section className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] space-y-3">
+        <div>
+          <p className="font-medium">Forwarded expense emails</p>
+          <p className="text-xs text-muted-foreground mt-1">Forward a receipt or bill to your connected Gmail and put ArtFlow Expense in the subject.</p>
+        </div>
+        <button
+          onClick={importForwardedExpenses}
+          disabled={importingEmail}
+          className="w-full h-11 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
+        >
+          <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
+          {importingEmail ? "Checking expense emails…" : "Import Forwarded Expenses"}
+        </button>
+      </section>
 
       <div className="pastel-peach rounded-3xl p-5 border border-[hsl(var(--border))]">
         <p className="text-[11px] font-semibold text-foreground uppercase">
