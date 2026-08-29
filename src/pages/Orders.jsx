@@ -57,7 +57,7 @@ export default function Orders() {
         list.push(`${y}-${String(m).padStart(2, "0")}`);
       }
     }
-    return list;
+    return list.reverse();
   }, [orders]);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
