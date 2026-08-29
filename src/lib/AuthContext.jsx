@@ -110,6 +110,7 @@ export const AuthProvider = ({ children }) => {
           name: currentUser.business_name || currentUser.data?.business_name || 'My Business',
           primary_email: currentUser.email,
           member_emails: [currentUser.email],
+          sales_emails: [currentUser.email],
         });
       } else {
         const members = Array.from(new Set([...(business.member_emails || []), currentUser.email]));
