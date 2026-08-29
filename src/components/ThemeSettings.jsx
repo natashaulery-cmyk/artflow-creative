@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Monitor } from "lucide-react";
 
-const options = [
+const OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "Auto", icon: Monitor },
+  { value: "system", label: "System", icon: Monitor },
 ];
 
 export default function ThemeSettings() {
@@ -13,7 +13,7 @@ export default function ThemeSettings() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const active = theme || "system";
+  const active = mounted ? theme || "system" : "system";
 
   return (
     <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
@@ -22,16 +22,16 @@ export default function ThemeSettings() {
         Choose how Art Flow Creative looks on this device.
       </p>
       <div className="grid grid-cols-3 gap-2">
-        {options.map(({ value, label, icon: Icon }) => {
-          const selected = mounted && active === value;
+        {OPTIONS.map(({ value, label, icon: Icon }) => {
+          const selected = active === value;
           return (
             <button
               key={value}
-              onClick={() => setTheme(value)}
-              className={`h-16 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-colors ${
+              onClick={() => mounted && setTheme(value)}
+              className={`flex flex-col items-center justify-center gap-2 h-20 rounded-2xl border transition-colors ${
                 selected
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted text-foreground border-transparent active:scale-[0.98]"
+                  : "bg-muted text-foreground border-transparent"
               }`}
             >
               <Icon className="w-5 h-5" />

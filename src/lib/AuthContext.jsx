@@ -89,6 +89,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const triggerLoginSync = async () => {
+    try {
+      if (sessionStorage.getItem('afc_auto_synced')) return;
+      sessionStorage.setItem('afc_auto_synced', '1');
+      await Promise.allSettled([
+        base44.functions.invoke('processSaleEmails'),
+        base44.functions.invoke('processExpenseEmails'),
+      ]);
+    } catch (e) {
+      // background sync — never block the user
+    }
+  };
+
   const checkUserAuth = async () => {
     try {
       // Now check if the user is authenticated
@@ -98,6 +111,8 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
+      // Pull in new sales and expenses from Gmail once per login session.
+      triggerLoginSync();
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
@@ -117,7 +132,8 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    
+    sessionStorage.removeItem('afc_auto_synced');
+
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
       base44.auth.logout(window.location.href);
