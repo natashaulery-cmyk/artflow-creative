@@ -29,6 +29,11 @@ export default function Login() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    setError("");
+    base44.auth.redirectToLogin(returnTo);
+  };
+
   return (
     <AuthLayout
       icon={LogIn}
