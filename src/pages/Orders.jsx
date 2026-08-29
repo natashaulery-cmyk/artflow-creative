@@ -41,21 +41,16 @@ export default function Orders() {
     }
   };
 
+  // Build the month list from real order history (plus the current month),
+  // sorted newest-first so the most recent month — August — always leads
+  // instead of a hardcoded January start.
   const months = useMemo(() => {
-    const now = new Date();
-    const list = [];
-    let year = now.getFullYear();
-    let month = now.getMonth() + 1;
-    while (year > 2026 || (year === 2026 && month >= 1)) {
-      list.push(`${year}-${String(month).padStart(2, "0")}`);
-      month -= 1;
-      if (month === 0) {
-        year -= 1;
-        month = 12;
-      }
-    }
-    return list;
-  }, []);
+    const set = new Set([currentMonthKey()]);
+    orders.forEach((o) => {
+      if (o.sale_date) set.add(o.sale_date.slice(0, 7));
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [orders]);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
 
