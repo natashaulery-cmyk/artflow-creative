@@ -103,8 +103,6 @@ export const AuthProvider = ({ children }) => {
           (b.member_emails || []).some((member) => String(member).toLowerCase() === email)
         );
       }
-      if (!business) business = businesses[0];
-
       if (!business) {
         business = await base44.entities.Business.create({
           name: currentUser.business_name || currentUser.data?.business_name || 'My Business',
