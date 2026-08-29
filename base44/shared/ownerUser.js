@@ -22,7 +22,8 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
   let business = businesses.find((b) => b.id === activeId);
   if (!business && email) {
     business = businesses.find((b) =>
-      (b.member_emails || []).some((member) => lower(member) === email)
+      (b.sales_emails || []).some((member) => lower(member) === email)
+      || (b.member_emails || []).some((member) => lower(member) === email)
     );
   }
   if (!business) business = businesses.find((b) => b.created_by_id === user.id);
@@ -32,6 +33,7 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
       name: user.business_name || user.data?.business_name || 'My Business',
       primary_email: user.email || emailHint || null,
       member_emails: user.email ? [user.email] : [],
+      sales_emails: user.email ? [user.email] : [],
       created_by_id: user.id,
     });
   } else if (email && !(business.member_emails || []).some((member) => lower(member) === email)) {
