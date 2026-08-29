@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { resolveOwnerUserId } from '../../shared/ownerUser.js';
 
 const decodeBytes = (value = '') => {
   const clean = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -26,8 +27,8 @@ const attachmentParts = (payload, found = []) => {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Sign in required' }, { status: 401 });
+    const ownerId = await resolveOwnerUserId(base44);
+    if (!ownerId) return Response.json({ error: 'No app owner found to attribute expenses to' }, { status: 500 });
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -38,7 +39,7 @@ export default async function(req) {
     );
     if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
     const ids = ((await listRes.json()).messages || []).map((m) => m.id);
-    const existing = await base44.entities.Expense.list('-date', 5000);
+    const existing = await base44.asServiceRole.entities.Expense.list('-date', 5000);
     const seen = new Set(existing.map((e) => e.receipt_id).filter(Boolean));
     const categories = ['Inventory / Frames', 'Printing Supplies', 'Packaging', 'Equipment', 'Office Expense', 'Software & Subscriptions', 'Phone / Internet', 'Advertising', 'Shipping', 'Other'];
 
@@ -131,7 +132,7 @@ export default async function(req) {
         const deductiblePercent = Math.min(100, Math.max(0, Number(expense.deductible_percent) || 100));
         const category = categories.includes(expense.category) ? expense.category : 'Other';
 
-        await base44.entities.Expense.create({
+        await base44.asServiceRole.entities.Expense.create({
           date,
           category,
           description: expense.description || expense.vendor || 'Forwarded receipt',
@@ -142,6 +143,7 @@ export default async function(req) {
           receipt_id: receiptId,
           notes: expense.notes || 'Imported from a batch email marked ArtFlow Expense',
           sync_source: 'gmail',
+          created_by_id: ownerId,
         });
         seen.add(receiptId);
         created++;
