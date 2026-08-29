@@ -188,15 +188,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    setAuthChecked(true);
+    setAuthError(null);
+
+    // Clear the cached Base44 token too. Otherwise a broken/custom Google OAuth
+    // setup can reload the same authenticated Account page immediately.
+    try {
+      localStorage.removeItem('base44_access_token');
+      localStorage.removeItem('token');
+    } catch {}
+
+    try {
+      await base44.auth.logout(false);
+    } catch (error) {
+      console.error('Logout cleanup failed:', error);
+    }
+
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+      window.location.replace('/login?clear_access_token=true');
     }
   };
 
