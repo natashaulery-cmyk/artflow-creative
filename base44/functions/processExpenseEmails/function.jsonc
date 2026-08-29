@@ -1,0 +1,15 @@
+{
+  "name": "processExpenseEmails",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Sync forwarded expenses every 5 minutes",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "*/5 * * * *",
+      "description": "Import Gmail receipts and bills marked ArtFlow Expense",
+      "is_active": true
+    }
+  ]
+}
