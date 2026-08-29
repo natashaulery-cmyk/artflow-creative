@@ -37,7 +37,7 @@ export default function Orders() {
   const importEmailSales = async () => {
     setImportingEmail(true);
     try {
-      const directSources = ["syncVintedPro", "syncDepopPartner"];
+      const directSources = ["syncVintedPro", "syncDepopPartner", "syncEtsy"];
       const directMessages = [];
 
       // Direct marketplace APIs are authoritative when available. Drain their
