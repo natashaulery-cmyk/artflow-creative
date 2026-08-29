@@ -66,6 +66,17 @@
     "sync_source": {
       "type": "string",
       "description": "Where the row came from, such as google_sheet or manual"
+    },
+    "business_id": {
+      "type": "string",
+      "description": "Business workspace that owns this order"
+    },
+    "access_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails allowed to access this order"
     }
   },
   "required": [
@@ -78,13 +89,40 @@
   ],
   "rls": {
     "read": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        },
+        {
+          "data.access_emails": "{{user.email}}"
+        }
+      ]
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        },
+        {
+          "data.access_emails": "{{user.email}}"
+        }
+      ]
     },
     "delete": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        }
+      ]
     }
   }
 }
