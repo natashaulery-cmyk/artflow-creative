@@ -1,0 +1,15 @@
+{
+  "name": "syncVintedPro",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Sync Vinted Pro orders every minute",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "* * * * *",
+      "description": "Backfill and sync Vinted Pro orders directly through the official Vinted Pro Integrations Orders API when a production token is configured",
+      "is_active": true
+    }
+  ]
+}
