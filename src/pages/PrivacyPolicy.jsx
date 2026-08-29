@@ -90,6 +90,7 @@ export default function PrivacyPolicy() {
         </div>
 
         <div className="mt-10 border-t border-border pt-6 flex flex-wrap gap-4 text-sm">
+          <Link to="/support" className="text-primary hover:underline">Support</Link>
           <Link to="/terms-of-service" className="text-primary hover:underline">Terms of Service</Link>
           <Link to="/login" className="text-primary hover:underline">Return to login</Link>
         </div>
