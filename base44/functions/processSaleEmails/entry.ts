@@ -25,7 +25,7 @@ export default async function(req) {
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
-    const query = 'newer_than:120d (from:vinted.com OR from:depop.com) (sold OR sale OR order)';
+    const query = 'newer_than:120d (from:vinted.com OR from:depop.com OR from:etsy.com OR from:poshmark.com OR from:ebay.com) (sold OR sale OR order)';
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`,
       { headers }
@@ -66,10 +66,10 @@ export default async function(req) {
       const body = textFromPayload(msg.payload) || msg.snippet || '';
 
       const prompt =
-        'Extract one completed sale from this Vinted or Depop email. Ignore offers, likes, messages, listing notices, shipping-only notices, cancellations, refunds, and purchases made by the inbox owner. ' +
+        'Extract one completed seller sale from this Vinted, Depop, Etsy, Poshmark, or eBay email. Ignore offers, likes, messages, listing notices, shipping-only notices, cancellations, refunds, payouts, fees, and purchases made by the inbox owner. ' +
         'Set is_sale=false unless the inbox owner sold an item and the sale price is clearly present. Never invent a price.\n' +
         `Sender: ${sender}\nSubject: ${subject}\nBody: ${body.slice(0, 16000)}\n` +
-        'Return JSON with is_sale, platform (Vinted or Depop), order_id, product_name, quantity, size, unit_price, buyer, and sale_date (YYYY-MM-DD).';
+        'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, unit_price, buyer, and sale_date (YYYY-MM-DD).';
 
       const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt,
@@ -97,7 +97,9 @@ export default async function(req) {
         continue;
       }
 
-      const platform = order.platform === 'Depop' ? 'Depop' : 'Vinted';
+      const allowedPlatforms = ['Vinted', 'Depop', 'Etsy', 'Poshmark', 'eBay'];
+      const platform = allowedPlatforms.includes(order.platform) ? order.platform :
+        (/etsy/i.test(sender) ? 'Etsy' : /poshmark/i.test(sender) ? 'Poshmark' : /ebay/i.test(sender) ? 'eBay' : /depop/i.test(sender) ? 'Depop' : 'Vinted');
       const saleDate = /^\d{4}-\d{2}-\d{2}$/.test(order.sale_date || '')
         ? order.sale_date
         : new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
