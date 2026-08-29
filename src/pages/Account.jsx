@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, LifeBuoy } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
@@ -63,6 +63,19 @@ export default function Account() {
       <EtsyConnectionCard />
 
       <ThemeSettings />
+
+      <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
+        <h2 className="font-heading text-lg mb-1 flex items-center gap-2"><LifeBuoy className="w-5 h-5" /> Support</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Get help with sales, expenses, inventory, reports, or your account.
+        </p>
+        <button
+          onClick={() => navigate("/support")}
+          className="w-full h-12 rounded-2xl bg-muted text-foreground font-semibold active:scale-[0.98] transition-transform"
+        >
+          Open Support
+        </button>
+      </section>
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-1">Sign out</h2>
