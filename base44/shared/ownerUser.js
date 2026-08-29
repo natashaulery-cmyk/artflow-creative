@@ -1,17 +1,51 @@
-// Resolves the user id that workflow-triggered imports should attribute records
-// to. In a connector-triggered workflow there is no incoming user request, so
-// base44.auth.me() returns null; in that case we fall back to the workspace
-// admin (the app owner) so created_by_id can be set explicitly for RLS.
-export async function resolveOwnerUserId(base44) {
+const lower = (value = '') => String(value || '').trim().toLowerCase();
+
+export async function resolveBusinessWorkspace(base44, emailHint = '') {
   const users = await base44.asServiceRole.entities.User.list();
-  const connectedGmailUser = users.find(
-    (u) => String(u.email || '').toLowerCase() === 'nulery3529@gmail.com'
-  );
-  if (connectedGmailUser?.id) return connectedGmailUser.id;
+  const requestedEmail = lower(emailHint);
 
-  const user = await base44.auth.me().catch(() => null);
-  if (user?.id && !user.is_service) return user.id;
+  let user = requestedEmail
+    ? users.find((u) => lower(u.email) === requestedEmail)
+    : await base44.auth.me().catch(() => null);
 
-  const admin = users.find((u) => u.role === 'admin') || users[0];
-  return admin?.id || null;
+  if (!user || user.is_service) {
+    user = users.find((u) => lower(u.email) === requestedEmail)
+      || users.find((u) => u.role === 'admin')
+      || users[0];
+  }
+  if (!user?.id) return { ownerId: null, businessId: null, email: requestedEmail || null };
+
+  const email = lower(user.email || requestedEmail);
+  const businesses = await base44.asServiceRole.entities.Business.list('name', 500);
+  const activeId = user.active_business_id || user.data?.active_business_id || null;
+
+  let business = businesses.find((b) => b.id === activeId);
+  if (!business && email) {
+    business = businesses.find((b) =>
+      (b.member_emails || []).some((member) => lower(member) === email)
+    );
+  }
+  if (!business) business = businesses.find((b) => b.created_by_id === user.id);
+
+  if (!business) {
+    business = await base44.asServiceRole.entities.Business.create({
+      name: user.business_name || user.data?.business_name || 'My Business',
+      primary_email: user.email || emailHint || null,
+      member_emails: user.email ? [user.email] : [],
+      created_by_id: user.id,
+    });
+  } else if (email && !(business.member_emails || []).some((member) => lower(member) === email)) {
+    try {
+      await base44.asServiceRole.entities.Business.update(business.id, {
+        member_emails: Array.from(new Set([...(business.member_emails || []), user.email || emailHint])),
+        primary_email: business.primary_email || user.email || emailHint,
+      });
+    } catch {}
+  }
+
+  return { ownerId: user.id, businessId: business?.id || null, email: user.email || emailHint || null };
+}
+
+export async function resolveOwnerUserId(base44, emailHint = '') {
+  return (await resolveBusinessWorkspace(base44, emailHint)).ownerId;
 }
