@@ -11,7 +11,8 @@
         "gmail_sales",
         "gmail_expenses",
         "vinted_api",
-        "depop_api"
+        "depop_api",
+        "etsy_api"
       ]
     },
     "last_synced_at": {
