@@ -22,6 +22,7 @@ import Gallery from '@/pages/Gallery';
 import Mileage from '@/pages/Mileage';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfService from '@/pages/TermsOfService';
+import Support from '@/pages/Support';
 import EtsyCallback from '@/pages/EtsyCallback';
 // Add page imports here
 
@@ -32,13 +33,14 @@ const AuthenticatedApp = () => {
 
   // Legal pages must be publicly accessible for Google OAuth verification and app users.
   const publicPath = window.location.pathname.replace(/\/+$/, '') || '/';
-  if (publicPath === '/privacy' || publicPath === '/privacy-policy' || publicPath === '/terms-of-service' || publicPath === '/terms') {
+  if (publicPath === '/privacy' || publicPath === '/privacy-policy' || publicPath === '/terms-of-service' || publicPath === '/terms' || publicPath === '/support') {
     return (
       <Routes>
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/terms" element={<Navigate to="/terms-of-service" replace />} />
+        <Route path="/support" element={<Support />} />
         <Route path="*" element={<Navigate to="/privacy-policy" replace />} />
       </Routes>
     );
@@ -74,6 +76,7 @@ const AuthenticatedApp = () => {
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/terms" element={<Navigate to="/terms-of-service" replace />} />
+      <Route path="/support" element={<Support />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
           <Route path="/" element={<TabShell />} />
