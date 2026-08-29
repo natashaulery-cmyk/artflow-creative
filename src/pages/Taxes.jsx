@@ -1,12 +1,13 @@
 import React, { useMemo } from "react";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
+import { useOrders } from "@/lib/useOrders";
 import { formatMoney } from "@/lib/format";
 import { StatCard } from "@/components/Cards";
 import PageHeader from "@/components/PageHeader";
 import { useNavigate } from "react-router-dom";
 
 export default function Taxes() {
-  const { records: orders } = useEntity("Order", "-sale_date");
+  const { records: orders } = useOrders();
   const { records: expenses } = useEntity("Expense", "-date");
   const [rate, setRate] = useTaxRate();
   const navigate = useNavigate();
