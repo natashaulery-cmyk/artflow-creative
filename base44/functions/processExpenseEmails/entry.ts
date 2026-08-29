@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { resolveOwnerUserId } from '../../shared/ownerUser.js';
+import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 const decodeBytes = (value = '') => {
   const clean = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -24,29 +24,104 @@ const attachmentParts = (payload, found = []) => {
   return found;
 };
 
-export default async function(req) {
+async function saveSyncState(base44, ownerId, businessId, data) {
+  if (!businessId) return;
   try {
-    const base44 = createClientFromRequest(req);
-    const ownerId = await resolveOwnerUserId(base44);
-    if (!ownerId) return Response.json({ error: 'No app owner found to attribute expenses to' }, { status: 500 });
+    const states = await base44.asServiceRole.entities.SyncState.list('-last_synced_at', 100);
+    const existing = states.find((item) => item.business_id === businessId && item.source === 'gmail_expenses');
+    const payload = {
+      business_id: businessId,
+      source: 'gmail_expenses',
+      last_synced_at: new Date().toISOString(),
+      last_found: data.found || 0,
+      last_processed: data.processed || 0,
+      last_created: data.created || 0,
+      last_remaining: data.remaining || 0,
+      status: data.status || 'ok',
+      message: data.message || '',
+    };
+    if (existing) await base44.asServiceRole.entities.SyncState.update(existing.id, payload);
+    else await base44.asServiceRole.entities.SyncState.create({ ...payload, created_by_id: ownerId });
+  } catch {}
+}
 
+export default async function(req) {
+  let base44;
+  let workspace = { ownerId: null, businessId: null, email: null };
+  try {
+    base44 = createClientFromRequest(req);
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
+
+    let connectedEmail = '';
+    try {
+      const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers });
+      if (profileRes.ok) connectedEmail = (await profileRes.json()).emailAddress || '';
+    } catch {}
+
+    workspace = await resolveBusinessWorkspace(base44, connectedEmail);
+    const { ownerId, businessId } = workspace;
+    if (!ownerId || !businessId) {
+      return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
+    }
+
     const query = 'after:2026/01/01 subject:"ArtFlow Expense"';
-    const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`,
-      { headers }
-    );
-    if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
-    const ids = ((await listRes.json()).messages || []).map((m) => m.id);
+    const allIds = [];
+    let pageToken = '';
+    do {
+      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+      url.searchParams.set('q', query);
+      url.searchParams.set('maxResults', '100');
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+      const listRes = await fetch(url, { headers });
+      if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
+      const page = await listRes.json();
+      allIds.push(...(page.messages || []).map((m) => m.id));
+      pageToken = page.nextPageToken || '';
+    } while (pageToken);
+
     const existing = await base44.asServiceRole.entities.Expense.list('-date', 5000);
-    const seen = new Set(existing.map((e) => e.receipt_id).filter(Boolean));
+
+    // Move older expenses from prior logins into the shared workspace.
+    let migrated = 0;
+    for (const oldExpense of existing.filter((e) => !e.archived && e.business_id !== businessId).slice(0, 150)) {
+      const duplicate = existing.some((candidate) =>
+        candidate.id !== oldExpense.id &&
+        !candidate.archived &&
+        candidate.business_id === businessId &&
+        candidate.date === oldExpense.date &&
+        Number(candidate.amount || 0).toFixed(2) === Number(oldExpense.amount || 0).toFixed(2) &&
+        String(candidate.description || '').trim().toLowerCase() === String(oldExpense.description || '').trim().toLowerCase()
+      );
+      if (!duplicate && oldExpense.date && Number(oldExpense.amount || 0) > 0) {
+        await base44.asServiceRole.entities.Expense.create({
+          business_id: businessId,
+          date: oldExpense.date,
+          category: oldExpense.category,
+          description: oldExpense.description,
+          amount: Number(oldExpense.amount || 0),
+          deductible_percent: Number(oldExpense.deductible_percent ?? 100),
+          deductible_amount: Number(oldExpense.deductible_amount ?? oldExpense.amount ?? 0),
+          source: oldExpense.source || 'legacy',
+          receipt_id: oldExpense.receipt_id || null,
+          notes: oldExpense.notes || null,
+          sync_source: oldExpense.sync_source || 'legacy',
+          archived: false,
+          created_by_id: ownerId,
+        });
+        migrated++;
+      }
+      await base44.asServiceRole.entities.Expense.update(oldExpense.id, { archived: true });
+    }
+
+    const currentExpenses = await base44.asServiceRole.entities.Expense.list('-date', 5000);
+    const seen = new Set(currentExpenses.filter((e) => !e.archived && e.business_id === businessId).map((e) => e.receipt_id).filter(Boolean));
     const categories = ['Inventory / Frames', 'Printing Supplies', 'Packaging', 'Equipment', 'Office Expense', 'Software & Subscriptions', 'Phone / Internet', 'Advertising', 'Shipping', 'Other'];
 
     let created = 0;
     let skipped = 0;
 
-    for (const id of ids) {
+    for (const id of allIds) {
       const msgRes = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,
         { headers }
@@ -121,8 +196,8 @@ export default async function(req) {
           skipped++;
           continue;
         }
-        const amount = Number(expense.amount);
-        if (!expense.is_expense || !Number.isFinite(amount) || amount <= 0) {
+        const expenseAmount = Number(expense.amount);
+        if (!expense.is_expense || !Number.isFinite(expenseAmount) || expenseAmount <= 0) {
           skipped++;
           continue;
         }
@@ -133,12 +208,13 @@ export default async function(req) {
         const category = categories.includes(expense.category) ? expense.category : 'Other';
 
         await base44.asServiceRole.entities.Expense.create({
+          business_id: businessId,
           date,
           category,
           description: expense.description || expense.vendor || 'Forwarded receipt',
-          amount,
+          amount: expenseAmount,
           deductible_percent: deductiblePercent,
-          deductible_amount: amount * deductiblePercent / 100,
+          deductible_amount: expenseAmount * deductiblePercent / 100,
           source: expense.vendor || sender,
           receipt_id: receiptId,
           notes: expense.notes || 'Imported from a batch email marked ArtFlow Expense',
@@ -150,13 +226,28 @@ export default async function(req) {
       }
     }
 
-    return Response.json({
-      processed: ids.length,
+    const message = created + migrated
+      ? `Synced ${created + migrated} expense${created + migrated === 1 ? '' : 's'}`
+      : 'Expenses are up to date';
+    const response = {
+      connected_email: workspace.email,
+      found: allIds.length,
+      processed: allIds.length,
       created,
+      migrated,
+      remaining: 0,
       skipped,
-      message: created ? `Imported ${created} new expense${created === 1 ? '' : 's'}` : 'No new forwarded expenses found',
-    });
+      message,
+    };
+    await saveSyncState(base44, ownerId, businessId, { ...response, status: 'ok' });
+    return Response.json(response);
   } catch (error) {
+    if (base44 && workspace.businessId) {
+      await saveSyncState(base44, workspace.ownerId, workspace.businessId, {
+        status: 'error',
+        message: error.message || 'Expense email import failed',
+      });
+    }
     return Response.json({ error: error.message || 'Expense email import failed' }, { status: 500 });
   }
 }
