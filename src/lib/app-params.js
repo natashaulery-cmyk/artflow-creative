@@ -55,7 +55,7 @@ const getAppParams = () => {
 		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
 		functionsVersion: getAppParamValue("functions_version", { defaultValue: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION }),
 		backendUrl: getAppParamValue("backend_url", { defaultValue: import.meta.env.VITE_BASE44_BACKEND_URL || 'https://base44.app' }),
-		appBaseUrl: getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL || 'https://sweet-art-flow-go.base44.app' }),
+		appBaseUrl: getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL || 'https://art-flow-creative-art-fed4.vercel.app' }),
 	}
 }
 
