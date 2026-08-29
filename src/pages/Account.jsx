@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -75,7 +75,7 @@ export default function Account() {
           End your session on this device.
         </p>
         <button
-          onClick={() => base44.auth.logout()}
+          onClick={() => logout(true)}
           className="w-full h-12 rounded-2xl bg-muted text-foreground font-semibold active:scale-[0.98] transition-transform"
         >
           Log out
