@@ -1,0 +1,15 @@
+{
+  "name": "syncDepopPartner",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Sync Depop orders every minute",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "* * * * *",
+      "description": "Backfill and sync Depop orders directly through the official Depop Partner Selling API when credentials are configured",
+      "is_active": true
+    }
+  ]
+}
