@@ -70,7 +70,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <PullToRefresh onRefresh={refresh} />
       <PageHeader
-        title="Affordable Art Co"
+        title="Art Flow Creative"
         subtitle="Business Dashboard"
         right={
           <Link
