@@ -57,6 +57,15 @@
     },
     "estimated_profit": {
       "type": "number"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Safety/archive flag. Archived rows are excluded from all live totals."
+    },
+    "sync_source": {
+      "type": "string",
+      "description": "Where the row came from, such as google_sheet or manual"
     }
   },
   "required": [
