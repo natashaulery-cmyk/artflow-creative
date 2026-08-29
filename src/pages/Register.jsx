@@ -205,7 +205,7 @@ export default function Register() {
         </Button>
         <p className="text-center text-xs text-muted-foreground leading-5">
           By creating an account, you agree to the{" "}
-          <Link to="/terms" className="text-primary hover:underline">
+          <Link to="/terms-of-service" className="text-primary hover:underline">
             Terms of Service
           </Link>{" "}
           and acknowledge the{" "}
