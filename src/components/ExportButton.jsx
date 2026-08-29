@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Download, ChevronDown } from "lucide-react";
-import { formatMoney } from "@/lib/format";
 
 function csvCell(v) {
   const s = v == null ? "" : String(v);
