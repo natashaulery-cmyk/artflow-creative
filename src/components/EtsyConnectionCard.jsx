@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { appParams } from "@/lib/app-params";
 import { toast } from "sonner";
 
 export default function EtsyConnectionCard() {
@@ -32,7 +33,7 @@ export default function EtsyConnectionCard() {
   const connect = async () => {
     setConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/etsy/callback`;
+      const redirectUri = `${String(appParams.appBaseUrl || window.location.origin).replace(/\/$/, "")}/etsy/callback`;
       const res = await base44.functions.invoke("startEtsyOAuth", { redirect_uri: redirectUri });
       const data = res?.data || {};
       if (data.needs_setup || !data.authorize_url) {
