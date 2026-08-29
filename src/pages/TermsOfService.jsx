@@ -35,7 +35,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-xl font-semibold mb-2">Connected services</h2>
             <p>
-              Art Flow Creative may allow you to connect third-party services such as Google Sheets or Gmail. Connecting a service is optional. When you authorize a connection, you permit Art Flow Creative to access only the permissions requested for the feature you choose to use. Third-party services are also governed by their own terms and policies.
+              Art Flow Creative may allow you to connect Gmail for email-based sales and expense importing. Connecting a service is optional. When you authorize a connection, you permit Art Flow Creative to access only the permissions requested for the feature you choose to use. Third-party services are also governed by their own terms and policies.
             </p>
           </section>
 
