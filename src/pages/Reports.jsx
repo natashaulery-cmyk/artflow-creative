@@ -113,7 +113,7 @@ export default function Reports() {
 
       <MonthlySummary orders={orders} expenses={expenses} />
 
-      <TaxLiabilityTracker orders={orders} taxRate={taxRate} />
+      <TaxLiabilityTracker orders={orders} expenses={expenses} taxRate={taxRate} />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         {periods.map((p) => (
