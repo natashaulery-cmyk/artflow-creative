@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { importInventory } from '../../shared/inventorySync.js';
 
 // Inventory sync. Pulls the Inventory Pricing tab from the spreadsheet saved
@@ -20,8 +21,17 @@ export default async function(req) {
         { status: 400 }
       );
     }
-    const { accessToken } =
-      await base44.asServiceRole.connectors.getConnection('googlesheets');
+    let accessToken;
+    try {
+      ({ accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(
+        GOOGLE_SHEETS_CONNECTOR_ID
+      ));
+    } catch {
+      return Response.json(
+        { error: 'Connect your Google Sheets account in Account before syncing inventory.' },
+        { status: 409 }
+      );
+    }
     return await importInventory(base44, accessToken, spreadsheetId, sheetName);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
