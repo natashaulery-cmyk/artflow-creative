@@ -45,7 +45,19 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
     } catch {}
   }
 
-  return { ownerId: user.id, businessId: business?.id || null, email: user.email || emailHint || null };
+  const accessEmails = Array.from(new Set([
+    ...(business?.member_emails || []),
+    ...(business?.sales_emails || []),
+    business?.primary_email,
+    user.email,
+  ].map(lower).filter(Boolean)));
+
+  return {
+    ownerId: user.id,
+    businessId: business?.id || null,
+    email: user.email || emailHint || null,
+    accessEmails,
+  };
 }
 
 export async function resolveOwnerUserId(base44, emailHint = '') {
