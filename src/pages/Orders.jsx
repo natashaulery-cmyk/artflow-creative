@@ -44,37 +44,38 @@ export default function Orders() {
   };
 
   const months = useMemo(() => {
-    const keys = orders
-      .map((o) => (o.sale_date || "").slice(0, 7))
-      .filter((k) => /^\d{4}-\d{2}$/.test(k));
     const now = new Date();
-    const endKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const [ey, em] = endKey.split("-").map(Number);
     const list = [];
-    for (let y = 2026; y <= ey; y++) {
-      const mEnd = y === ey ? em : 12;
-      for (let m = 1; m <= mEnd; m++) {
-        list.push(`${y}-${String(m).padStart(2, "0")}`);
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1;
+    while (year > 2026 || (year === 2026 && month >= 1)) {
+      list.push(`${year}-${String(month).padStart(2, "0")}`);
+      month -= 1;
+      if (month === 0) {
+        year -= 1;
+        month = 12;
       }
     }
-    return list.reverse();
-  }, [orders]);
+    return list;
+  }, []);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
 
   const filtered = useMemo(() => {
-    return orders.filter((o) => {
-      if (platformFilter === "Bundles") {
-        if (!isBundle(o)) return false;
-      } else if (platformFilter !== "All" && o.platform !== platformFilter) return false;
-      if (monthFilter !== "All" && (o.sale_date || "").slice(0, 7) !== monthFilter) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        if (!`${o.product_name} ${o.order_id || ""}`.toLowerCase().includes(q))
-          return false;
-      }
-      return true;
-    });
+    return orders
+      .filter((o) => {
+        if (platformFilter === "Bundles") {
+          if (!isBundle(o)) return false;
+        } else if (platformFilter !== "All" && o.platform !== platformFilter) return false;
+        if (monthFilter !== "All" && (o.sale_date || "").slice(0, 7) !== monthFilter) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          if (!`${o.product_name} ${o.order_id || ""}`.toLowerCase().includes(q))
+            return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (b.sale_date || "").localeCompare(a.sale_date || ""));
   }, [orders, platformFilter, monthFilter, search]);
 
   const summary = useMemo(() => {
