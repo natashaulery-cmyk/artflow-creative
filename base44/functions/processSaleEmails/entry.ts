@@ -5,6 +5,7 @@ import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 150;
 const LEGACY_MIGRATION_BATCH = 150;
+const PARSER_VERSION = 2;
 
 const decode = (value = '') => {
   try {
@@ -125,7 +126,11 @@ export default async function(req) {
     }
     await saveSyncState(base44, ownerId, businessId, { status: 'running', message: 'Syncing sales emails…' });
 
-    const query = 'after:2026/01/01 {from:vinted.com from:depop.com from:etsy.com from:poshmark.com from:ebay.com}';
+    // Search sender text rather than exact domains. Marketplace providers sometimes
+    // change subdomains / sender addresses, and exact-domain searches can silently
+    // miss valid sales (especially Depop). Gmail returns these newest-first, which
+    // lets fresh orders land before historical backfill work.
+    const query = 'after:2026/01/01 {from:vinted from:depop from:etsy from:poshmark from:ebay}';
     const allMessageIds = [];
     let pageToken = '';
     do {
@@ -219,14 +224,22 @@ export default async function(req) {
       importHistory
         .filter((item) =>
           item.import_type === 'sale' &&
-          item.status !== 'error' &&
-          (!item.business_id || item.business_id === businessId)
+          (!item.business_id || item.business_id === businessId) &&
+          (
+            // Imported messages are permanently complete. Skipped messages are
+            // complete only for the current parser version so parser improvements
+            // automatically retry previously missed sales exactly once.
+            item.status === 'imported' ||
+            (item.status === 'skipped' && Number(item.parser_version || 0) === PARSER_VERSION)
+          )
         )
         .map((item) => item.message_id)
     );
     const seenEmailIds = new Set(targetOrders.map((o) => o.source_email_id).filter(Boolean));
     const unseenIds = allMessageIds.filter((id) => !completedEmailIds.has(id) && !seenEmailIds.has(id));
-    const batch = unseenIds.slice().reverse().slice(0, BATCH_SIZE);
+    // Gmail lists newest messages first. Never reverse this list: doing so makes a
+    // new sale wait behind hundreds of historical emails during a backfill.
+    const batch = unseenIds.slice(0, BATCH_SIZE);
 
     let created = 0;
     let skipped = 0;
@@ -247,6 +260,7 @@ export default async function(req) {
         platform: platform || null,
         details: String(details || '').slice(0, 500),
         business_id: businessId,
+        parser_version: PARSER_VERSION,
       };
       const existing = historyByMessage.get(messageId);
       if (existing) {
