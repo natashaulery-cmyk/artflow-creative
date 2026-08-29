@@ -114,7 +114,7 @@ export default async function(req) {
       const inv = inventoryCosts.find((item) => item.size === size);
       const costs = calculateOrderCosts({ ...order, quantity, unit_price: price }, inv);
 
-      await base44.asServiceRole.entities.Order.create({
+      await base44.entities.Order.create({
         sale_date: saleDate,
         platform,
         order_id: order.order_id || null,
@@ -126,7 +126,6 @@ export default async function(req) {
         buyer: order.buyer || null,
         source_email_id: messageId,
         sync_source: 'gmail',
-        created_by_id: ownerId,
         ...costs,
       });
 
