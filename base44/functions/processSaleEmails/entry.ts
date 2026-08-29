@@ -37,6 +37,111 @@ const platformFromSender = (sender = '') =>
   /ebay/i.test(sender) ? 'eBay' :
   /depop/i.test(sender) ? 'Depop' : 'Vinted';
 
+const moneyValue = (value = '') => {
+  const parsed = Number(String(value).replace(/[$,\s]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const inferSize = (name = '') => {
+  const match = String(name).match(/\b(\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?)\b/i);
+  return match ? match[1].replace(/\s+/g, '').replace('×', 'x') : 'Unknown';
+};
+
+// High-confidence marketplace templates are parsed directly so routine syncing
+// does not consume an AI integration call for every email. This keeps new sales
+// flowing even when the optional AI integration quota is exhausted.
+const parseKnownSale = ({ sender = '', subject = '', body = '', fallbackDate = '' }) => {
+  const platform = platformFromSender(sender);
+
+  if (platform === 'Vinted') {
+    // Vinted sends many status emails for one order. Only the original seller
+    // confirmation is treated as the sale; completion/payout/shipping updates
+    // are handled and ignored so they cannot create duplicates.
+    if (/^you sold an item on vinted$/i.test(subject.trim())) {
+      const chunks = String(body).split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+      const boughtIndex = chunks.findIndex((part) => /\shas bought$/i.test(part));
+      if (boughtIndex >= 0) {
+        const buyer = chunks[boughtIndex].replace(/\s+has bought$/i, '').trim();
+        let cursor = boughtIndex + 1;
+        let quantity = 1;
+        if (/^\d+$/.test(chunks[cursor] || '')) quantity = Math.max(1, Number(chunks[cursor++]));
+        const productName = chunks[cursor] || '';
+        const saleTotal = moneyValue(chunks.slice(cursor + 1).find((part) => /^\$[\d,.]+$/.test(part)) || '');
+        if (productName && saleTotal && saleTotal > 0) {
+          return {
+            handled: true,
+            order: {
+              is_sale: true,
+              platform: 'Vinted',
+              order_id: '',
+              product_name: productName,
+              quantity,
+              size: inferSize(productName),
+              sale_total: saleTotal,
+              buyer,
+              sale_date: fallbackDate,
+            },
+          };
+        }
+      }
+      return { handled: true, order: { is_sale: false, platform: 'Vinted' } };
+    }
+
+    // These are follow-up notices, purchases by the inbox owner, messages,
+    // offers, payouts, or other non-sale records. The actual seller sale is the
+    // "You sold an item on Vinted" email above.
+    return { handled: true, order: { is_sale: false, platform: 'Vinted' } };
+  }
+
+  if (platform === 'Depop') {
+    if (/sale confirmation/i.test(subject) && /you(?:'|’)?ve made a sale/i.test(body)) {
+      const buyerMatch = body.match(/\nBuyer\s*\n+([^\n]+)/i)
+        || subject.match(/sale confirmation for @([^\.]+)\.?/i);
+      const subtotalMatch = body.match(/\nSubtotal\s*\n+\$([\d,.]+)/i);
+      const orderDetailsMatch = body.match(/\nOrder details\s*\n+([\s\S]*?)\nShip to\s*\n/i);
+      const detailChunks = (orderDetailsMatch?.[1] || '')
+        .split(/\n\s*\n/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      const itemNames = [];
+      for (let i = 0; i < detailChunks.length; i += 1) {
+        if (!/^\$[\d,.]+$/.test(detailChunks[i]) && /^\$[\d,.]+$/.test(detailChunks[i + 1] || '')) {
+          itemNames.push(detailChunks[i]);
+          i += 1;
+        }
+      }
+      const quantity = Math.max(1, itemNames.length || (body.match(/\nItem price\s*\n+\$[\d,.]+/gi) || []).length || 1);
+      const saleTotal = moneyValue(subtotalMatch?.[1] || '');
+      const productName = itemNames.length > 1
+        ? `Bundle ${itemNames.length} items: ${itemNames.join(' + ')}`
+        : itemNames[0] || 'Depop sale';
+      if (saleTotal && saleTotal > 0) {
+        return {
+          handled: true,
+          order: {
+            is_sale: true,
+            platform: 'Depop',
+            order_id: '',
+            product_name: productName,
+            quantity,
+            size: inferSize(productName),
+            sale_total: saleTotal,
+            buyer: buyerMatch?.[1]?.trim() || '',
+            sale_date: fallbackDate,
+          },
+        };
+      }
+      return { handled: true, order: { is_sale: false, platform: 'Depop' } };
+    }
+
+    // Shipping reminders, delivery notices, marketing, and other Depop emails
+    // are not separate sales.
+    return { handled: true, order: { is_sale: false, platform: 'Depop' } };
+  }
+
+  return { handled: false, order: null };
+};
+
 const productSimilar = (a = '', b = '') => {
   const left = normalized(a);
   const right = normalized(b);
@@ -290,32 +395,36 @@ export default async function(req) {
         const fallbackDate = new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
         const inferredPlatform = platformFromSender(sender);
 
-        const prompt =
-          'Decide whether this marketplace email proves the inbox owner completed a seller sale. Shipping-label and bundle emails count when they contain the sold item and buyer-paid item price. ' +
-          'Ignore offers, likes, messages, listing notices, cancellations, refunds, payouts, fees, purchases made by the inbox owner, and emails without a clear item price. Never invent a value.\n' +
-          `Sender: ${sender}\nSubject: ${subject}\nReceived date: ${fallbackDate}\nBody: ${body.slice(0, 18000)}\n` +
-          'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, sale_total (the full amount paid for the item or bundle, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD). Do not multiply bundle totals by quantity.';
+        const known = parseKnownSale({ sender, subject, body, fallbackDate });
+        let order = known.order;
 
-        const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt,
-          response_json_schema: {
-            type: 'object',
-            properties: {
-              is_sale: { type: 'boolean' },
-              platform: { type: 'string' },
-              order_id: { type: 'string' },
-              product_name: { type: 'string' },
-              quantity: { type: 'number' },
-              size: { type: 'string' },
-              sale_total: { type: 'number' },
-              buyer: { type: 'string' },
-              sale_date: { type: 'string' },
+        if (!known.handled) {
+          const prompt =
+            'Decide whether this marketplace email proves the inbox owner completed a seller sale. Shipping-label and bundle emails count when they contain the sold item and buyer-paid item price. ' +
+            'Ignore offers, likes, messages, listing notices, cancellations, refunds, payouts, fees, purchases made by the inbox owner, and emails without a clear item price. Never invent a value.\n' +
+            `Sender: ${sender}\nSubject: ${subject}\nReceived date: ${fallbackDate}\nBody: ${body.slice(0, 18000)}\n` +
+            'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, sale_total (the full amount paid for the item or bundle, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD). Do not multiply bundle totals by quantity.';
+
+          const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt,
+            response_json_schema: {
+              type: 'object',
+              properties: {
+                is_sale: { type: 'boolean' },
+                platform: { type: 'string' },
+                order_id: { type: 'string' },
+                product_name: { type: 'string' },
+                quantity: { type: 'number' },
+                size: { type: 'string' },
+                sale_total: { type: 'number' },
+                buyer: { type: 'string' },
+                sale_date: { type: 'string' },
+              },
+              required: ['is_sale'],
             },
-            required: ['is_sale'],
-          },
-        });
-
-        const order = typeof result === 'string' ? JSON.parse(result) : result;
+          });
+          order = typeof result === 'string' ? JSON.parse(result) : result;
+        }
         const saleTotal = Number(order.sale_total);
         const quantity = Math.max(1, Number(order.quantity) || 1);
         const platform = ['Vinted', 'Depop', 'Etsy', 'Poshmark', 'eBay'].includes(order.platform)
