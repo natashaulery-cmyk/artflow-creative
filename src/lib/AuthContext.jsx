@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const syncInFlight = useRef(false);
 
   useEffect(() => {
     checkAppState();
@@ -89,29 +90,113 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const triggerLoginSync = async () => {
+  const ensureBusinessWorkspace = useCallback(async (currentUser) => {
+    if (!currentUser?.email) return null;
+    const email = String(currentUser.email).toLowerCase();
+    const currentId = currentUser.active_business_id || currentUser.data?.active_business_id || null;
+
     try {
-      if (sessionStorage.getItem('afc_auto_synced')) return;
-      sessionStorage.setItem('afc_auto_synced', '1');
-      await Promise.allSettled([
+      const businesses = await base44.entities.Business.list('name', 100);
+      let business = businesses.find((b) => b.id === currentId);
+      if (!business) {
+        business = businesses.find((b) =>
+          (b.member_emails || []).some((member) => String(member).toLowerCase() === email)
+        );
+      }
+      if (!business) business = businesses[0];
+
+      if (!business) {
+        business = await base44.entities.Business.create({
+          name: currentUser.business_name || currentUser.data?.business_name || 'My Business',
+          primary_email: currentUser.email,
+          member_emails: [currentUser.email],
+        });
+      } else {
+        const members = Array.from(new Set([...(business.member_emails || []), currentUser.email]));
+        if (members.length !== (business.member_emails || []).length) {
+          try {
+            await base44.entities.Business.update(business.id, {
+              member_emails: members,
+              primary_email: business.primary_email || currentUser.email,
+            });
+          } catch {
+            // A shared member can still use the workspace even if they cannot edit membership.
+          }
+        }
+      }
+
+      if (business?.id && currentId !== business.id) {
+        await base44.auth.updateMe({ active_business_id: business.id });
+      }
+      return business?.id || null;
+    } catch (e) {
+      console.error('Could not prepare business workspace:', e);
+      return currentId;
+    }
+  }, []);
+
+  const publishSyncState = useCallback((state) => {
+    try {
+      localStorage.setItem('artflow_last_sync', JSON.stringify(state));
+      window.dispatchEvent(new CustomEvent('artflow:sync-state', { detail: state }));
+    } catch {}
+  }, []);
+
+  const triggerLoginSync = useCallback(async () => {
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
+    publishSyncState({ status: 'syncing', at: new Date().toISOString() });
+    try {
+      const [sales, expenses] = await Promise.allSettled([
         base44.functions.invoke('processSaleEmails'),
         base44.functions.invoke('processExpenseEmails'),
       ]);
+      const state = {
+        status: 'ok',
+        at: new Date().toISOString(),
+        sales: sales.status === 'fulfilled' ? sales.value?.data || null : null,
+        expenses: expenses.status === 'fulfilled' ? expenses.value?.data || null : null,
+      };
+      publishSyncState(state);
+      window.dispatchEvent(new CustomEvent('artflow:data-synced', { detail: state }));
     } catch (e) {
-      // background sync — never block the user
+      publishSyncState({ status: 'error', at: new Date().toISOString(), message: e?.message || 'Sync failed' });
+    } finally {
+      syncInFlight.current = false;
     }
-  };
+  }, [publishSyncState]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const id = window.setInterval(triggerLoginSync, 5 * 60 * 1000);
+    const syncWhenActive = () => {
+      if (document.visibilityState === 'visible') triggerLoginSync();
+    };
+    window.addEventListener('focus', syncWhenActive);
+    window.addEventListener('online', syncWhenActive);
+    document.addEventListener('visibilitychange', syncWhenActive);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', syncWhenActive);
+      window.removeEventListener('online', syncWhenActive);
+      document.removeEventListener('visibilitychange', syncWhenActive);
+    };
+  }, [isAuthenticated, triggerLoginSync]);
 
   const checkUserAuth = async () => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
-      setUser(currentUser);
+      const businessId = await ensureBusinessWorkspace(currentUser);
+      const hydratedUser = businessId
+        ? { ...currentUser, active_business_id: businessId, data: { ...(currentUser.data || {}), active_business_id: businessId } }
+        : currentUser;
+      setUser(hydratedUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
-      // Pull in new sales and expenses from Gmail once per login session.
+      // Sync immediately after login; a five-minute timer and focus/online triggers keep it fresh.
       triggerLoginSync();
     } catch (error) {
       console.error('User auth check failed:', error);
@@ -132,8 +217,6 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    sessionStorage.removeItem('afc_auto_synced');
-
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
       base44.auth.logout(window.location.href);
