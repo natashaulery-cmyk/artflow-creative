@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { importInventory } from '../../shared/inventorySync.js';
 import { importArtPieces } from '../../shared/artPieceSync.js';
@@ -25,8 +26,17 @@ export default async function(req) {
       );
     }
 
-    const { accessToken } =
-      await base44.asServiceRole.connectors.getConnection('googlesheets');
+    let accessToken;
+    try {
+      ({ accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(
+        GOOGLE_SHEETS_CONNECTOR_ID
+      ));
+    } catch {
+      return Response.json(
+        { error: 'Connect your Google Sheets account in Account before importing.' },
+        { status: 409 }
+      );
+    }
     const mode = reqBody?.mode || 'orders';
 
     if (mode === 'discover') {
