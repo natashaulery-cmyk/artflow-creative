@@ -47,8 +47,20 @@ export default function GoogleSheetsConnect() {
       const redirectUrl = await base44.connectors.connectAppUser(
         GOOGLE_SHEETS_CONNECTOR_ID
       );
-      // A full-page redirect is more reliable than a popup on iPhone/Safari.
-      window.location.href = redirectUrl;
+      // Open in a popup so we can detect when OAuth completes and auto-refresh.
+      const popup = window.open(redirectUrl, "_blank", "width=500,height=650");
+      setConnecting(false);
+      if (popup) {
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            refresh();
+          }
+        }, 500);
+      } else {
+        // Popup blocked — fall back to full-page redirect.
+        window.location.href = redirectUrl;
+      }
     } catch (e) {
       setConnecting(false);
       toast.error("Could not start Google Sheets connection", {
