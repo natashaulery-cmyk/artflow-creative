@@ -29,6 +29,20 @@ export default function Orders() {
   const [search, setSearch] = useState("");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [syncing, setSyncing] = useState(false);
+  const [importingEmail, setImportingEmail] = useState(false);
+
+  const importEmailSales = async () => {
+    setImportingEmail(true);
+    try {
+      const res = await base44.functions.invoke("processSaleEmails", {});
+      toast.success(res.data?.message || "Email sales checked");
+      await reloadOrders();
+    } catch (e) {
+      toast.error("Email import failed", { description: e?.response?.data?.error || e?.message });
+    } finally {
+      setImportingEmail(false);
+    }
+  };
 
   const syncSpreadsheet = async () => {
     setSyncing(true);
@@ -134,13 +148,23 @@ export default function Orders() {
         </div>
       </div>
 
-      <button
-        onClick={syncSpreadsheet}
-        disabled={syncing}
-        className="w-full h-11 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
-      >
-        <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync Spreadsheet
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={importEmailSales}
+          disabled={importingEmail}
+          className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
+        >
+          <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
+          {importingEmail ? "Checking Vinted & Depop…" : "Import Vinted & Depop Sales"}
+        </button>
+        <button
+          onClick={syncSpreadsheet}
+          disabled={syncing}
+          className="w-full h-10 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-xs font-medium disabled:opacity-60"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} /> Sync Spreadsheet
+        </button>
+      </div>
 
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
