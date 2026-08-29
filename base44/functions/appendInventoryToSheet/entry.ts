@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
 // Inventory export. Appends a single inventory item to the spreadsheet saved
 // on the current user's account, using the app's managed Google Sheets connection.
@@ -39,8 +40,17 @@ export default async function(req) {
       return Response.json({ error: 'Inventory item not found' }, { status: 404 });
     }
 
-    const { accessToken } =
-      await base44.asServiceRole.connectors.getConnection('googlesheets');
+    let accessToken;
+    try {
+      ({ accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(
+        GOOGLE_SHEETS_CONNECTOR_ID
+      ));
+    } catch {
+      return Response.json(
+        { error: 'Connect your Google Sheets account in Account before exporting inventory.' },
+        { status: 409 }
+      );
+    }
 
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
