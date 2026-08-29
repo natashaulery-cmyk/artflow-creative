@@ -18,7 +18,7 @@ export default function Taxes() {
     const yearOrders = orders.filter((o) => (o.sale_date || "").slice(0, 4) === String(year));
     const yearExpenses = expenses.filter((e) => (e.date || "").slice(0, 4) === String(year));
     const businessProfit = yearOrders.reduce((s, o) => s + (o.estimated_profit || 0), 0);
-    const deductions = yearExpenses.reduce((s, e) => s + (e.deductible_amount || 0), 0);
+    const deductions = yearExpenses.reduce((s, e) => s + (e.deductible_amount ?? ((e.amount || 0) * ((e.deductible_percent ?? 100) / 100))), 0);
     const taxableProfit = businessProfit - deductions;
     const reserve = Math.max(0, taxableProfit) * (rate / 100);
     const afterReserve = taxableProfit - reserve;
