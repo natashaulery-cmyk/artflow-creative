@@ -161,7 +161,7 @@ export default async function(req) {
         status: 'ok', cursor: priorCursor || '', found: listed.length, processed: 0, created: 0, remaining: 0,
         message: 'Vinted Pro is up to date.',
       });
-      return Response.json({ available: true, created: 0, updated: 0, remaining: 0, cursor: priorCursor || null, message: 'Vinted Pro is up to date.' });
+      return Response.json({ available: true, created: 0, updated: 0, remaining: 0, more_possible: false, cursor: priorCursor || null, message: 'Vinted Pro is up to date.' });
     }
 
     const [details, allOrders, allInventory] = await Promise.all([
@@ -277,6 +277,7 @@ export default async function(req) {
     }
 
     const remaining = Math.max(0, candidates.length - batch.length);
+    const morePossible = remaining > 0 || batch.length === MAX_ORDERS_PER_RUN;
     const message = errors
       ? `Vinted Pro synced ${created} new and ${updated} updated order lines; ${errors} order detail request${errors === 1 ? '' : 's'} will retry.`
       : remaining > 0
@@ -308,6 +309,7 @@ export default async function(req) {
       canceled,
       errors,
       remaining,
+      more_possible: morePossible,
       cursor: safeCursor || null,
       message,
     });
@@ -319,6 +321,6 @@ export default async function(req) {
     if (workspace?.ownerId && workspace?.businessId) {
       await saveState(base44, workspace.ownerId, workspace.businessId, { status: 'error', message: hint });
     }
-    return Response.json({ available: true, error: hint, created: 0, updated: 0, remaining: 0 }, { status: 502 });
+    return Response.json({ available: true, error: hint, created: 0, updated: 0, remaining: 0, more_possible: false }, { status: 502 });
   }
 }
