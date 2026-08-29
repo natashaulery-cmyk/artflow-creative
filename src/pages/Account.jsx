@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import BusinessManager from "@/components/BusinessManager";
 import ThemeSettings from "@/components/ThemeSettings";
+import EtsyConnectionCard from "@/components/EtsyConnectionCard";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -58,6 +59,8 @@ export default function Account() {
       </section>
 
       <BusinessManager />
+
+      <EtsyConnectionCard />
 
       <ThemeSettings />
 
