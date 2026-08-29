@@ -280,7 +280,7 @@ export default async function(req) {
           'Decide whether this marketplace email proves the inbox owner completed a seller sale. Shipping-label and bundle emails count when they contain the sold item and buyer-paid item price. ' +
           'Ignore offers, likes, messages, listing notices, cancellations, refunds, payouts, fees, purchases made by the inbox owner, and emails without a clear item price. Never invent a value.\n' +
           `Sender: ${sender}\nSubject: ${subject}\nReceived date: ${fallbackDate}\nBody: ${body.slice(0, 18000)}\n` +
-          'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, unit_price (the total item price, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD).';
+          'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, sale_total (the full amount paid for the item or bundle, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD). Do not multiply bundle totals by quantity.';
 
         const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
           prompt,
@@ -293,7 +293,7 @@ export default async function(req) {
               product_name: { type: 'string' },
               quantity: { type: 'number' },
               size: { type: 'string' },
-              unit_price: { type: 'number' },
+              sale_total: { type: 'number' },
               buyer: { type: 'string' },
               sale_date: { type: 'string' },
             },
@@ -302,12 +302,12 @@ export default async function(req) {
         });
 
         const order = typeof result === 'string' ? JSON.parse(result) : result;
-        const price = Number(order.unit_price);
+        const saleTotal = Number(order.sale_total);
         const quantity = Math.max(1, Number(order.quantity) || 1);
         const platform = ['Vinted', 'Depop', 'Etsy', 'Poshmark', 'eBay'].includes(order.platform)
           ? order.platform : inferredPlatform;
 
-        if (!order.is_sale || !order.product_name || !Number.isFinite(price) || price <= 0) {
+        if (!order.is_sale || !order.product_name || !Number.isFinite(saleTotal) || saleTotal <= 0) {
           await recordHistory(messageId, 'skipped', platform, subject || 'Not a completed seller sale');
           skipped++;
           continue;
@@ -315,7 +315,7 @@ export default async function(req) {
 
         const extractedDate = validDate(order.sale_date || '') ? order.sale_date : '';
         const saleDate = extractedDate >= START_DATE && extractedDate <= today ? extractedDate : fallbackDate;
-        const saleTotal = price * quantity;
+        const unitPrice = saleTotal / quantity;
         const candidate = {
           platform,
           order_id: order.order_id || null,
@@ -333,7 +333,7 @@ export default async function(req) {
 
         const size = order.size || 'Unknown';
         const inv = inventoryCosts.find((item) => item.size === size);
-        const costs = calculateOrderCosts({ ...order, quantity, unit_price: price }, inv);
+        const costs = calculateOrderCosts({ ...order, quantity, unit_price: unitPrice }, inv);
         const createdOrder = await base44.asServiceRole.entities.Order.create({
           business_id: businessId,
           access_emails: accessEmails,
@@ -343,7 +343,7 @@ export default async function(req) {
           product_name: order.product_name,
           quantity,
           size,
-          unit_price: price,
+          unit_price: unitPrice,
           sale_total: saleTotal,
           buyer: order.buyer || null,
           source_email_id: messageId,
