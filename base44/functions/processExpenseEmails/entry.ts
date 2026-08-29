@@ -65,20 +65,49 @@ export default async function(req) {
       return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
     }
 
-    const query = 'after:2026/01/01 subject:"ArtFlow Expense"';
+    // Search broadly for purchase/receipt language so an artist is not limited to
+    // a hard-coded retailer or supply list. The classifier below decides whether
+    // each purchase is actually related to the art business.
+    const lookback = new Date();
+    lookback.setMonth(lookback.getMonth() - 18);
+    const afterDate = lookback.toISOString().slice(0, 10).replace(/-/g, '/');
+    const queries = [
+      `after:${afterDate} subject:"ArtFlow Expense"`,
+      `after:${afterDate} {subject:receipt subject:ordered subject:"order confirmation" subject:"order received" subject:"purchase confirmation" subject:invoice subject:"payment successful" subject:"payment received" subject:"your order"}`,
+    ];
     const allIds = [];
-    let pageToken = '';
-    do {
-      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-      url.searchParams.set('q', query);
-      url.searchParams.set('maxResults', '100');
-      if (pageToken) url.searchParams.set('pageToken', pageToken);
-      const listRes = await fetch(url, { headers });
-      if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
-      const page = await listRes.json();
-      allIds.push(...(page.messages || []).map((m) => m.id));
-      pageToken = page.nextPageToken || '';
-    } while (pageToken);
+    const idSet = new Set();
+    for (const query of queries) {
+      let pageToken = '';
+      let pages = 0;
+      do {
+        const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+        url.searchParams.set('q', query);
+        url.searchParams.set('maxResults', '100');
+        if (pageToken) url.searchParams.set('pageToken', pageToken);
+        const listRes = await fetch(url, { headers });
+        if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
+        const page = await listRes.json();
+        for (const message of page.messages || []) {
+          if (!idSet.has(message.id)) {
+            idSet.add(message.id);
+            allIds.push(message.id);
+          }
+        }
+        pageToken = page.nextPageToken || '';
+        pages++;
+      } while (pageToken && pages < 20 && allIds.length < 2000);
+    }
+
+    const importHistory = await base44.asServiceRole.entities.EmailImportMessage.list('-created_date', 5000).catch(() => []);
+    const completedIds = new Set(
+      importHistory
+        .filter((item) => item.import_type === 'expense' && item.status !== 'error' && (!item.business_id || item.business_id === businessId))
+        .map((item) => item.message_id)
+        .filter(Boolean)
+    );
+    const pendingIds = allIds.filter((id) => !completedIds.has(id));
+    const batch = pendingIds.slice(0, 150);
 
     const existing = await base44.asServiceRole.entities.Expense.list('-date', 5000);
 
@@ -117,18 +146,60 @@ export default async function(req) {
 
     const currentExpenses = await base44.asServiceRole.entities.Expense.list('-date', 5000);
     const seen = new Set(currentExpenses.filter((e) => !e.archived && e.business_id === businessId).map((e) => e.receipt_id).filter(Boolean));
-    const categories = ['Inventory / Frames', 'Printing Supplies', 'Packaging', 'Equipment', 'Office Expense', 'Software & Subscriptions', 'Phone / Internet', 'Advertising', 'Shipping', 'Other'];
+    const categories = [
+      'Art Materials & Supplies',
+      'Paper & Print Media',
+      'Ink & Printing Supplies',
+      'Frames & Display',
+      'Packaging & Shipping Supplies',
+      'Equipment & Tools',
+      'Photography Equipment',
+      'Software & Subscriptions',
+      'Phone / Internet',
+      'Advertising & Marketing',
+      'Shipping & Postage',
+      'Office & Business',
+      'Other Business Expense',
+    ];
 
     let created = 0;
     let skipped = 0;
+    let errors = 0;
 
-    for (const id of allIds) {
+    const historyByMessage = new Map();
+    for (const item of importHistory) {
+      if (item.import_type !== 'expense' || !item.message_id) continue;
+      if (item.business_id && item.business_id !== businessId) continue;
+      if (!historyByMessage.has(item.message_id)) historyByMessage.set(item.message_id, item);
+    }
+
+    const recordHistory = async (messageId, status, details) => {
+      const payload = {
+        message_id: messageId,
+        import_type: 'expense',
+        status,
+        platform: 'Gmail',
+        details: String(details || '').slice(0, 500),
+        business_id: businessId,
+      };
+      const prior = historyByMessage.get(messageId);
+      if (prior) {
+        await base44.asServiceRole.entities.EmailImportMessage.update(prior.id, payload);
+        Object.assign(prior, payload);
+      } else {
+        const createdHistory = await base44.asServiceRole.entities.EmailImportMessage.create({ ...payload, created_by_id: ownerId });
+        historyByMessage.set(messageId, createdHistory);
+      }
+    };
+
+    for (const id of batch) {
       const msgRes = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,
         { headers }
       );
       if (!msgRes.ok) {
-        skipped++;
+        errors++;
+        await recordHistory(id, 'error', 'Could not read Gmail message');
         continue;
       }
       const msg = await msgRes.json();
@@ -156,11 +227,16 @@ export default async function(req) {
         if (uploaded?.file_url) fileUrls.push(uploaded.file_url);
       }
 
+      const explicitlyForwarded = subject.toLowerCase().includes('artflow expense');
       const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt:
-          'Extract every separate paid business expense from this batch email and its attachments. Each receipt, invoice, or attached forwarded email is a separate expense. Never invent an amount. Ignore unpaid quotes, orders without a completed charge, refunds, and personal purchases. ' +
+          'Identify every separate PAID expense in this email or its attachments that is clearly related to operating an art-selling or creative-products business. Do not rely on a fixed keyword list; use the actual item and purchase context. ' +
+          'Examples that qualify include art materials and craft supplies; paints, inks, markers, pencils, adhesives, cutting tools, mats and tools; canvases and substrates; photo paper, cardstock and specialty print media; printer ink, cartridges, printheads, printers and printer maintenance; frames, mats, backing boards and display hardware; sleeves, cellophane bags, protectors, rigid mailers, envelopes, boxes, tape, labels and packaging; cameras, lenses, lighting, tripods and photography gear used to create/list products; tablets, drawing devices and production equipment; business software/subscriptions; advertising/marketing; postage and shipping; and other clearly business-related purchases used to create, photograph, package, display, market, or ship artwork. ' +
+          'Exclude groceries, clothing, household/personal purchases, entertainment, personal electronics with no business evidence, marketplace sales/payouts, refunds, failed payments, unpaid quotes, buyer-paid shipping, and installment/payment-plan notices that merely repay a purchase already represented by a merchant receipt. ' +
+          `This message was ${explicitlyForwarded ? '' : 'not '}explicitly forwarded/labeled by the user as ArtFlow Expense. ` +
+          'For automatic detection, only mark an item is_expense=true when business relevance is strong. Never invent an amount or split one order total across items unless the receipt gives item-level amounts. Prefer the actual charged/paid amount attributable to the business item. ' +
           `Allowed categories: ${categories.join(', ')}.\nSender: ${sender}\nSubject: ${subject}\nEmail body: ${body.slice(0, 16000)}\n` +
-          `Attachment names: ${parts.map((p) => p.filename).join(', ')}. Return JSON with an expenses array. Each item must contain is_expense, vendor, description, amount, date (YYYY-MM-DD), category, deductible_percent, and notes.`,
+          `Attachment names: ${parts.map((p) => p.filename).join(', ')}. Return JSON with an expenses array. Each item must contain is_expense, confidence (0 to 1), vendor, description, amount, date (YYYY-MM-DD), category, deductible_percent, and notes.`,
         file_urls: fileUrls,
         response_json_schema: {
           type: 'object',
@@ -171,6 +247,7 @@ export default async function(req) {
                 type: 'object',
                 properties: {
                   is_expense: { type: 'boolean' },
+                  confidence: { type: 'number' },
                   vendor: { type: 'string' },
                   description: { type: 'string' },
                   amount: { type: 'number' },
@@ -190,6 +267,7 @@ export default async function(req) {
       const parsed = typeof result === 'string' ? JSON.parse(result) : result;
       const expenses = Array.isArray(parsed?.expenses) ? parsed.expenses : [];
 
+      let messageCreated = 0;
       for (let index = 0; index < expenses.length; index++) {
         const expense = expenses[index];
         const receiptId = `${id}:${index}`;
@@ -198,7 +276,9 @@ export default async function(req) {
           continue;
         }
         const expenseAmount = Number(expense.amount);
-        if (!expense.is_expense || !Number.isFinite(expenseAmount) || expenseAmount <= 0) {
+        const confidence = Math.max(0, Math.min(1, Number(expense.confidence) || 0));
+        const minimumConfidence = explicitlyForwarded ? 0.55 : 0.82;
+        if (!expense.is_expense || confidence < minimumConfidence || !Number.isFinite(expenseAmount) || expenseAmount <= 0) {
           skipped++;
           continue;
         }
@@ -220,25 +300,33 @@ export default async function(req) {
           source: expense.vendor || sender,
           receipt_id: receiptId,
           notes: expense.notes || 'Imported from a batch email marked ArtFlow Expense',
-          sync_source: 'gmail',
+          sync_source: 'gmail_auto',
+          auto_classified: !explicitlyForwarded,
+          confidence,
           created_by_id: ownerId,
         });
         seen.add(receiptId);
         created++;
+        messageCreated++;
       }
+      await recordHistory(id, 'processed', messageCreated ? `Imported ${messageCreated} art-business expense(s)` : 'No qualifying art-business expense found');
     }
 
+    const remaining = Math.max(0, pendingIds.length - batch.length);
     const message = created + migrated
-      ? `Synced ${created + migrated} expense${created + migrated === 1 ? '' : 's'}`
-      : 'Expenses are up to date';
+      ? `Synced ${created + migrated} expense${created + migrated === 1 ? '' : 's'}${remaining ? ` · ${remaining} emails left to check` : ''}`
+      : remaining
+        ? `Checked ${batch.length} emails · ${remaining} left to check`
+        : 'Art-business expenses are up to date';
     const response = {
       connected_email: workspace.email,
       found: allIds.length,
-      processed: allIds.length,
+      processed: batch.length,
       created,
       migrated,
-      remaining: 0,
+      remaining,
       skipped,
+      errors,
       message,
     };
     await saveSyncState(base44, ownerId, businessId, { ...response, status: 'ok' });
