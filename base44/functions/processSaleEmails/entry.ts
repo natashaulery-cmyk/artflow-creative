@@ -94,7 +94,7 @@ export default async function(req) {
     } catch {}
 
     workspace = await resolveBusinessWorkspace(base44, connectedEmail);
-    const { ownerId, businessId } = workspace;
+    const { ownerId, businessId, accessEmails = [] } = workspace;
     if (!ownerId || !businessId) {
       return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
     }
@@ -167,6 +167,7 @@ export default async function(req) {
             archived: false,
             sync_source: oldOrder.sync_source || 'legacy',
             business_id: businessId,
+            access_emails: accessEmails,
             created_by_id: ownerId,
           });
           targetOrders.push(created);
@@ -180,7 +181,10 @@ export default async function(req) {
     // Ensure records already owned by this account join the business workspace.
     for (const order of targetOrders.filter((o) => !o.business_id).slice(0, 250)) {
       try {
-        await base44.asServiceRole.entities.Order.update(order.id, { business_id: businessId });
+        await base44.asServiceRole.entities.Order.update(order.id, {
+          business_id: businessId,
+          access_emails: accessEmails,
+        });
         order.business_id = businessId;
       } catch {}
     }
@@ -284,6 +288,7 @@ export default async function(req) {
         const costs = calculateOrderCosts({ ...order, quantity, unit_price: price }, inv);
         const createdOrder = await base44.asServiceRole.entities.Order.create({
           business_id: businessId,
+          access_emails: accessEmails,
           sale_date: saleDate,
           platform,
           order_id: order.order_id || null,
