@@ -1,9 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
-import { resolveOwnerUserId } from '../../shared/ownerUser.js';
+import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 const START_DATE = '2026-01-01';
-const BATCH_SIZE = 75;
+const BATCH_SIZE = 150;
+const LEGACY_MIGRATION_BATCH = 150;
 
 const decode = (value = '') => {
   try {
@@ -26,6 +27,8 @@ const textFromPayload = (payload) => {
 };
 
 const normalized = (value = '') => String(value).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+const amount = (value) => Number(value || 0).toFixed(2);
+const validDate = (value = '') => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 const platformFromSender = (sender = '') =>
   /etsy/i.test(sender) ? 'Etsy' :
@@ -33,16 +36,70 @@ const platformFromSender = (sender = '') =>
   /ebay/i.test(sender) ? 'eBay' :
   /depop/i.test(sender) ? 'Depop' : 'Vinted';
 
-export default async function(req) {
-  try {
-    const base44 = createClientFromRequest(req);
-    const ownerId = await resolveOwnerUserId(base44);
-    if (!ownerId) return Response.json({ error: 'No app owner found to attribute sales to' }, { status: 500 });
+const productSimilar = (a = '', b = '') => {
+  const left = normalized(a);
+  const right = normalized(b);
+  if (!left || !right) return false;
+  if (left === right || left.includes(right) || right.includes(left)) return true;
+  const prefix = Math.min(28, left.length, right.length);
+  return prefix >= 18 && left.slice(0, prefix) === right.slice(0, prefix);
+};
 
+const sameSale = (a, b) => {
+  if ((a.platform || '') !== (b.platform || '')) return false;
+  if ((a.sale_date || '') !== (b.sale_date || '')) return false;
+  if (amount(a.sale_total) !== amount(b.sale_total)) return false;
+
+  const idsA = [normalized(a.order_id), normalized(a.source_email_id)].filter(Boolean);
+  const idsB = [normalized(b.order_id), normalized(b.source_email_id)].filter(Boolean);
+  const idOverlap = idsA.some((id) => idsB.includes(id));
+  if (idOverlap) return productSimilar(a.product_name, b.product_name);
+
+  return productSimilar(a.product_name, b.product_name);
+};
+
+async function saveSyncState(base44, ownerId, businessId, data) {
+  if (!businessId) return;
+  try {
+    const states = await base44.asServiceRole.entities.SyncState.list('-last_synced_at', 100);
+    const existing = states.find((item) => item.business_id === businessId && item.source === 'gmail_sales');
+    const payload = {
+      business_id: businessId,
+      source: 'gmail_sales',
+      last_synced_at: new Date().toISOString(),
+      last_found: data.found || 0,
+      last_processed: data.processed || 0,
+      last_created: data.created || 0,
+      last_remaining: data.remaining || 0,
+      status: data.status || 'ok',
+      message: data.message || '',
+    };
+    if (existing) await base44.asServiceRole.entities.SyncState.update(existing.id, payload);
+    else await base44.asServiceRole.entities.SyncState.create({ ...payload, created_by_id: ownerId });
+  } catch {}
+}
+
+export default async function(req) {
+  let base44;
+  let workspace = { ownerId: null, businessId: null, email: null };
+  try {
+    base44 = createClientFromRequest(req);
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
-    const query = 'after:2026/01/01 {from:vinted.com from:depop.com from:etsy.com from:poshmark.com from:ebay.com}';
 
+    let connectedEmail = '';
+    try {
+      const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers });
+      if (profileRes.ok) connectedEmail = (await profileRes.json()).emailAddress || '';
+    } catch {}
+
+    workspace = await resolveBusinessWorkspace(base44, connectedEmail);
+    const { ownerId, businessId } = workspace;
+    if (!ownerId || !businessId) {
+      return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
+    }
+
+    const query = 'after:2026/01/01 {from:vinted.com from:depop.com from:etsy.com from:poshmark.com from:ebay.com}';
     const allMessageIds = [];
     let pageToken = '';
     do {
@@ -57,52 +114,75 @@ export default async function(req) {
       pageToken = page.nextPageToken || '';
     } while (pageToken);
 
-    const [inventoryCosts, existingOrders, importHistory] = await Promise.all([
-      base44.asServiceRole.entities.InventoryCost.list('size', 100),
+    const [allInventory, existingOrders, importHistory] = await Promise.all([
+      base44.asServiceRole.entities.InventoryCost.list('size', 500),
       base44.asServiceRole.entities.Order.list('-created_date', 5000),
       base44.asServiceRole.entities.EmailImportMessage.list('-created_date', 5000),
     ]);
 
-    // Consolidate older Gmail imports that were accidentally owned by the
-    // admin or workflow service account. Base44 ownership is immutable, so
-    // recreate each unique sale under the connected Gmail user and archive
-    // the old copy.
-    const targetEmailIds = new Set(
-      existingOrders
-        .filter((o) => o.created_by_id === ownerId && !o.archived)
-        .map((o) => o.source_email_id)
-        .filter(Boolean)
+    const inventoryCosts = allInventory.filter(
+      (item) => item.business_id === businessId || (!item.business_id && item.created_by_id === ownerId)
     );
-    const migratedEmailIds = new Set();
-    for (const oldOrder of existingOrders.filter(
-      (o) => o.sync_source === 'gmail' && o.created_by_id !== ownerId && !o.archived
-    )) {
-      const emailId = oldOrder.source_email_id;
-      if (emailId && !targetEmailIds.has(emailId) && !migratedEmailIds.has(emailId)) {
-        await base44.asServiceRole.entities.Order.create({
-          sale_date: oldOrder.sale_date,
-          platform: oldOrder.platform,
-          order_id: oldOrder.order_id || null,
-          product_name: oldOrder.product_name,
-          quantity: oldOrder.quantity,
-          size: oldOrder.size,
-          unit_price: oldOrder.unit_price,
-          sale_total: oldOrder.sale_total,
-          buyer: oldOrder.buyer || null,
-          source_email_id: emailId,
-          base_item_cost: oldOrder.base_item_cost || 0,
-          paper_ink_cost: oldOrder.paper_ink_cost || 0,
-          packaging_cost: oldOrder.packaging_cost || 0,
-          total_cost: oldOrder.total_cost || 0,
-          estimated_profit: oldOrder.estimated_profit || 0,
-          archived: false,
-          sync_source: 'gmail',
-          created_by_id: ownerId,
-        });
-        migratedEmailIds.add(emailId);
-        targetEmailIds.add(emailId);
+    const today = new Date().toISOString().slice(0, 10);
+    const targetOrders = existingOrders.filter(
+      (o) => !o.archived && (o.business_id === businessId || (o.created_by_id === ownerId && !o.business_id))
+    );
+
+    // Move legacy rows that were created by old service users / previous logins
+    // into the shared business workspace. Process curated sheet/Gmail rows first,
+    // then raw service rows, so duplicate copies are archived instead of counted.
+    const priority = (o) => o.sync_source === 'google_sheet' ? 0 : o.sync_source === 'gmail' ? 1 : String(o.created_by_id || '').startsWith('service_') ? 3 : 2;
+    const legacyCandidates = existingOrders
+      .filter((o) => !o.archived && o.business_id !== businessId)
+      .sort((a, b) => priority(a) - priority(b) || String(b.sale_date || '').localeCompare(String(a.sale_date || '')));
+
+    let migrated = 0;
+    let legacyArchived = 0;
+    for (const oldOrder of legacyCandidates.slice(0, LEGACY_MIGRATION_BATCH)) {
+      const isValid = validDate(oldOrder.sale_date)
+        && oldOrder.sale_date >= START_DATE
+        && oldOrder.sale_date <= today
+        && Number(oldOrder.sale_total || 0) > 0
+        && oldOrder.product_name;
+
+      if (isValid) {
+        const duplicate = targetOrders.some((existing) => sameSale(existing, oldOrder));
+        if (!duplicate) {
+          const created = await base44.asServiceRole.entities.Order.create({
+            sale_date: oldOrder.sale_date,
+            platform: oldOrder.platform,
+            order_id: oldOrder.order_id || null,
+            product_name: oldOrder.product_name,
+            quantity: Number(oldOrder.quantity) || 1,
+            size: oldOrder.size || 'Unknown',
+            unit_price: Number(oldOrder.unit_price || oldOrder.sale_total || 0),
+            sale_total: Number(oldOrder.sale_total || 0),
+            buyer: oldOrder.buyer || null,
+            source_email_id: oldOrder.source_email_id || null,
+            base_item_cost: Number(oldOrder.base_item_cost || 0),
+            paper_ink_cost: Number(oldOrder.paper_ink_cost || 0),
+            packaging_cost: Number(oldOrder.packaging_cost || 0),
+            total_cost: Number(oldOrder.total_cost || 0),
+            estimated_profit: Number(oldOrder.estimated_profit ?? oldOrder.sale_total ?? 0),
+            archived: false,
+            sync_source: oldOrder.sync_source || 'legacy',
+            business_id: businessId,
+            created_by_id: ownerId,
+          });
+          targetOrders.push(created);
+          migrated++;
+        }
       }
       await base44.asServiceRole.entities.Order.update(oldOrder.id, { archived: true });
+      legacyArchived++;
+    }
+
+    // Ensure records already owned by this account join the business workspace.
+    for (const order of targetOrders.filter((o) => !o.business_id).slice(0, 250)) {
+      try {
+        await base44.asServiceRole.entities.Order.update(order.id, { business_id: businessId });
+        order.business_id = businessId;
+      } catch {}
     }
 
     const completedEmailIds = new Set(
@@ -110,14 +190,10 @@ export default async function(req) {
         .filter((item) => item.import_type === 'sale' && item.status !== 'error')
         .map((item) => item.message_id)
     );
-    const seenEmailIds = new Set(existingOrders.map((o) => o.source_email_id).filter(Boolean));
-    const seenOrderIds = new Set(existingOrders.map((o) => normalized(o.order_id)).filter(Boolean));
-    const seenFallbackKeys = new Set(
-      existingOrders.map((o) => `${o.platform}|${normalized(o.product_name)}|${o.sale_date}|${Number(o.sale_total || 0).toFixed(2)}`)
-    );
-
+    const seenEmailIds = new Set(targetOrders.map((o) => o.source_email_id).filter(Boolean));
     const unseenIds = allMessageIds.filter((id) => !completedEmailIds.has(id) && !seenEmailIds.has(id));
     const batch = unseenIds.slice().reverse().slice(0, BATCH_SIZE);
+
     let created = 0;
     let skipped = 0;
     let errors = 0;
@@ -150,8 +226,8 @@ export default async function(req) {
 
         const prompt =
           'Decide whether this marketplace email proves the inbox owner completed a seller sale. Shipping-label and bundle emails count when they contain the sold item and buyer-paid item price. ' +
-          'Ignore offers, likes, messages, listing notices, cancellations, refunds, payouts, fees, purchases made by the inbox owner, and emails without a clear item price. Never invent a value.\\n' +
-          `Sender: ${sender}\\nSubject: ${subject}\\nReceived date: ${fallbackDate}\\nBody: ${body.slice(0, 18000)}\\n` +
+          'Ignore offers, likes, messages, listing notices, cancellations, refunds, payouts, fees, purchases made by the inbox owner, and emails without a clear item price. Never invent a value.\n' +
+          `Sender: ${sender}\nSubject: ${subject}\nReceived date: ${fallbackDate}\nBody: ${body.slice(0, 18000)}\n` +
           'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, unit_price (the total item price, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD).';
 
         const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
@@ -185,14 +261,19 @@ export default async function(req) {
           continue;
         }
 
-        const extractedDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(order.sale_date || '') ? order.sale_date : '';
-        const today = new Date().toISOString().slice(0, 10);
+        const extractedDate = validDate(order.sale_date || '') ? order.sale_date : '';
         const saleDate = extractedDate >= START_DATE && extractedDate <= today ? extractedDate : fallbackDate;
-        const orderIdKey = normalized(order.order_id);
         const saleTotal = price * quantity;
-        const fallbackKey = `${platform}|${normalized(order.product_name)}|${saleDate}|${saleTotal.toFixed(2)}`;
+        const candidate = {
+          platform,
+          order_id: order.order_id || null,
+          product_name: order.product_name,
+          sale_date: saleDate,
+          sale_total: saleTotal,
+          source_email_id: messageId,
+        };
 
-        if ((orderIdKey && seenOrderIds.has(orderIdKey)) || seenFallbackKeys.has(fallbackKey)) {
+        if (targetOrders.some((existing) => sameSale(existing, candidate))) {
           await recordHistory(messageId, 'skipped', platform, `Duplicate: ${subject}`);
           skipped++;
           continue;
@@ -201,7 +282,8 @@ export default async function(req) {
         const size = order.size || 'Unknown';
         const inv = inventoryCosts.find((item) => item.size === size);
         const costs = calculateOrderCosts({ ...order, quantity, unit_price: price }, inv);
-        await base44.asServiceRole.entities.Order.create({
+        const createdOrder = await base44.asServiceRole.entities.Order.create({
+          business_id: businessId,
           sale_date: saleDate,
           platform,
           order_id: order.order_id || null,
@@ -217,10 +299,9 @@ export default async function(req) {
           ...costs,
         });
 
+        targetOrders.push(createdOrder);
         await recordHistory(messageId, 'imported', platform, subject);
         seenEmailIds.add(messageId);
-        if (orderIdKey) seenOrderIds.add(orderIdKey);
-        seenFallbackKeys.add(fallbackKey);
         created++;
       } catch (error) {
         errors++;
@@ -230,23 +311,36 @@ export default async function(req) {
       }
     }
 
-    const remaining = Math.max(0, unseenIds.length - batch.length);
+    const emailRemaining = Math.max(0, unseenIds.length - batch.length);
+    const legacyRemaining = Math.max(0, legacyCandidates.length - Math.min(legacyCandidates.length, LEGACY_MIGRATION_BATCH));
+    const remaining = emailRemaining + legacyRemaining;
     const message = remaining > 0
-      ? `Imported ${created} sale${created === 1 ? '' : 's'}. Backfill continuing automatically (${remaining} emails left).`
-      : created
-        ? `Imported ${created} new sale${created === 1 ? '' : 's'}. All marketplace emails are up to date.`
-        : 'All marketplace sales emails are up to date.';
+      ? `Synced ${created + migrated} order${created + migrated === 1 ? '' : 's'}. Backfill continuing automatically (${remaining} records left).`
+      : created + migrated
+        ? `Synced ${created + migrated} order${created + migrated === 1 ? '' : 's'}. Everything is up to date.`
+        : 'Everything is up to date.';
 
-    return Response.json({
+    const response = {
+      connected_email: workspace.email,
       found: allMessageIds.length,
       processed: batch.length,
       created,
+      migrated,
+      legacy_archived: legacyArchived,
       skipped,
       errors,
       remaining,
       message,
-    });
+    };
+    await saveSyncState(base44, ownerId, businessId, { ...response, status: errors ? 'error' : 'ok' });
+    return Response.json(response);
   } catch (error) {
+    if (base44 && workspace.businessId) {
+      await saveSyncState(base44, workspace.ownerId, workspace.businessId, {
+        status: 'error',
+        message: error.message || 'Email import failed',
+      });
+    }
     return Response.json({ error: error.message || 'Email import failed' }, { status: 500 });
   }
 }
