@@ -154,12 +154,18 @@ const productSimilar = (a = '', b = '') => {
 const sameSale = (a, b) => {
   if ((a.platform || '') !== (b.platform || '')) return false;
 
-  // Prefer stable marketplace/email identifiers. Two different IDs are two
-  // different orders even if the same product sold for the same price that day.
+  // Marketplace/email IDs identify an order, not necessarily a single line item.
+  // Depop bundle emails can contain several legitimate products under the same
+  // order/email ID, so only treat overlapping IDs as duplicates when the line
+  // itself also matches by amount, quantity, and product.
   const idsA = [normalized(a.order_id), normalized(a.source_email_id)].filter(Boolean);
   const idsB = [normalized(b.order_id), normalized(b.source_email_id)].filter(Boolean);
   const idOverlap = idsA.some((id) => idsB.includes(id));
-  if (idOverlap) return true;
+  if (idOverlap) {
+    if (amount(a.sale_total) !== amount(b.sale_total)) return false;
+    if (Number(a.quantity || 1) !== Number(b.quantity || 1)) return false;
+    return productSimilar(a.product_name, b.product_name);
+  }
   if (idsA.length && idsB.length) return false;
 
   // Only use the date/amount/product fingerprint for truly identifier-less rows.
