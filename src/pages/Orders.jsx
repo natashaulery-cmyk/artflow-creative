@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Plus, RefreshCw, Download } from "lucide-react";
+import { Search, Plus, RefreshCw } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
 import { formatMoney, formatDate, currentMonthKey, monthShort } from "@/lib/format";
@@ -37,25 +37,6 @@ export default function Orders() {
       toast.success(`Synced ${res.data?.created || 0} new order(s)`);
     } catch (e) {
       toast.error("Email sync failed — connect Gmail first");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const importSheets = async () => {
-    setSyncing(true);
-    try {
-      const me = await base44.auth.me();
-      const spreadsheetId = me?.spreadsheet_id || me?.data?.spreadsheet_id;
-      if (!spreadsheetId) {
-        toast.error("Add your Google Sheet in Account first");
-        return;
-      }
-      const res = await base44.functions.invoke("importFromSheets", { spreadsheetId });
-      toast.success(`Imported ${res.data?.imported || 0} order(s)`);
-      await reloadOrders();
-    } catch (e) {
-      toast.error("Import failed — connect Google Sheets in Account first");
     } finally {
       setSyncing(false);
     }
@@ -147,22 +128,13 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={syncEmails}
-          disabled={syncing}
-          className="flex-1 h-11 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
-        >
-          <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync Emails
-        </button>
-        <button
-          onClick={importSheets}
-          disabled={syncing}
-          className="flex-1 h-11 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
-        >
-          <Download className="w-4 h-4" /> Import Sheets
-        </button>
-      </div>
+      <button
+        onClick={syncEmails}
+        disabled={syncing}
+        className="w-full h-11 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
+      >
+        <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync Emails
+      </button>
 
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

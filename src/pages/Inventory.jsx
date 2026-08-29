@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Minus, Plus, Pencil, RefreshCw } from "lucide-react";
+import { Minus, Plus, Pencil } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { base44 } from "@/api/base44Client";
 import { formatMoney } from "@/lib/format";
@@ -17,50 +17,8 @@ export default function Inventory() {
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [filter, setFilter] = useState("All");
   const [overrides, setOverrides] = useState({});
-  const [syncing, setSyncing] = useState(false);
-  const [importingArt, setImportingArt] = useState(false);
 
   const refresh = async () => { await reloadInventory(); };
-
-  const syncFromSheet = async () => {
-    setSyncing(true);
-    try {
-      const me = await base44.auth.me();
-      const spreadsheetId = me?.spreadsheet_id || me?.data?.spreadsheet_id;
-      if (!spreadsheetId) {
-        toast.error("Add your Google Sheet in Account first");
-        return;
-      }
-      const res = await base44.functions.invoke("syncInventoryFromSheets", { spreadsheetId });
-      toast.success(`Synced ${res.data?.imported ?? 0} item(s) from your sheet`);
-      await reloadInventory();
-    } catch (e) {
-      toast.error("Sync failed — connect Google Sheets in Account first");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const importArtFromSheet = async () => {
-    setImportingArt(true);
-    try {
-      const me = await base44.auth.me();
-      const spreadsheetId = me?.spreadsheet_id || me?.data?.spreadsheet_id;
-      if (!spreadsheetId) {
-        toast.error("Add your Google Sheet in Account first");
-        return;
-      }
-      const res = await base44.functions.invoke("importFromSheets", {
-        mode: "artpieces",
-        spreadsheetId,
-      });
-      toast.success(`Imported ${res.data?.imported ?? 0} art piece(s) from your sheet`);
-    } catch (e) {
-      toast.error("Import failed — connect Google Sheets in Account first");
-    } finally {
-      setImportingArt(false);
-    }
-  };
 
   const adjustQty = async (rec, delta) => {
     const newQty = Math.max(0, (rec.quantity_on_hand || 0) + delta);
@@ -117,27 +75,7 @@ export default function Inventory() {
   return (
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
-      <PageHeader
-        title="Inventory"
-        subtitle="Stock across all categories"
-        right={
-          <button
-            onClick={syncFromSheet}
-            disabled={syncing}
-            className="shrink-0 h-11 px-4 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center gap-2 text-sm font-medium disabled:opacity-60"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync
-          </button>
-        }
-      />
-
-      <button
-        onClick={importArtFromSheet}
-        disabled={importingArt}
-        className="w-full h-12 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
-      >
-        <RefreshCw className={`w-4 h-4 ${importingArt ? "animate-spin" : ""}`} /> Import Art Pieces from Sheet
-      </button>
+      <PageHeader title="Inventory" subtitle="Stock across all categories" />
 
       <div className="grid grid-cols-4 gap-2">
         {[
