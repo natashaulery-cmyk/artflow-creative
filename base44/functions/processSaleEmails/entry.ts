@@ -3,7 +3,7 @@ import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { resolveOwnerUserId } from '../../shared/ownerUser.js';
 
 const START_DATE = '2026-01-01';
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 75;
 
 const decode = (value = '') => {
   try {
