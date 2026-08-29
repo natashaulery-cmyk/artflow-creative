@@ -119,7 +119,7 @@ export default function Expenses() {
       <section className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] space-y-3">
         <div>
           <p className="font-medium">Forwarded expense emails</p>
-          <p className="text-xs text-muted-foreground mt-1">Forward a receipt or bill to your connected Gmail and put ArtFlow Expense in the subject.</p>
+          <p className="text-xs text-muted-foreground mt-1">Send or forward one email to your connected Gmail with the subject ArtFlow Expense. Attach one receipt or a batch of receipts; each attachment becomes a separate expense.</p>
         </div>
         <button
           onClick={importForwardedExpenses}
