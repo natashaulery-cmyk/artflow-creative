@@ -65,14 +65,21 @@ export default function EtsyConnectionCard() {
           <p className="text-xs text-muted-foreground mt-0.5">{status.shop_name || "Etsy shop"}</p>
         </div>
       ) : (
-        <button
-          onClick={connect}
-          disabled={connecting}
-          className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-        >
-          {connecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-          {status.configured ? "Connect Etsy" : "Finish Etsy Setup"}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={connect}
+            disabled={connecting}
+            className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {connecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+            {status.configured ? "Connect Etsy" : "Finish Etsy Setup"}
+          </button>
+          {!status.configured && Array.isArray(status.missing) && status.missing.length > 0 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Missing in Base44 Secrets: {status.missing.join(", ")}
+            </p>
+          )}
+        </div>
       )}
     </section>
   );
