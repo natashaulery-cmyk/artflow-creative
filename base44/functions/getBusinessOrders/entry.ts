@@ -12,9 +12,16 @@ export default async function(req) {
     if (!businessId) return Response.json({ orders: [], business_id: null });
 
     const allOrders = await base44.asServiceRole.entities.Order.list('-sale_date', 5000);
+    const currentEmail = String(me.email || '').trim().toLowerCase();
     const orders = allOrders
       .filter((o) => o.archived !== true)
-      .filter((o) => o.business_id === businessId || (!o.business_id && o.created_by_id === ownerId))
+      .filter((o) => {
+        if (o.business_id === businessId) return true;
+        if (!o.business_id && o.created_by_id === ownerId) return true;
+        return (o.access_emails || []).some(
+          (email) => String(email || '').trim().toLowerCase() === currentEmail
+        );
+      })
       .sort((a, b) => String(b.sale_date || '').localeCompare(String(a.sale_date || '')));
 
     return Response.json({ orders, business_id: businessId, count: orders.length });
