@@ -4,6 +4,7 @@ import { Trash2, AlertTriangle, LifeBuoy } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import BusinessManager from "@/components/BusinessManager";
 import ThemeSettings from "@/components/ThemeSettings";
 import EtsyConnectionCard from "@/components/EtsyConnectionCard";
@@ -11,19 +12,10 @@ import { toast } from "sonner";
 
 export default function Account() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    base44.auth
-      .me()
-      .then((me) => {
-        setUser(me);
-      })
-      .catch(() => {});
-  }, []);
 
   const handleDelete = async () => {
     if (confirmText !== "DELETE") return;
