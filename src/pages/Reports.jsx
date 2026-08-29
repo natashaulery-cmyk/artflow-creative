@@ -62,7 +62,7 @@ export default function Reports() {
     const estimatedProfit = po.reduce((s, o) => s + (o.estimated_profit || 0), 0);
     const netProfit = grossSales - productCosts - bizExpenses;
     const expenseCount = pe.length;
-    const deductions = pe.reduce((s, e) => s + (e.deductible_amount || 0), 0);
+    const deductions = pe.reduce((s, e) => s + (e.deductible_amount ?? ((e.amount || 0) * ((e.deductible_percent ?? 100) / 100))), 0);
     const taxableProfit = estimatedProfit - deductions;
     const taxReserve = Math.max(0, taxableProfit) * (taxRate / 100);
 
