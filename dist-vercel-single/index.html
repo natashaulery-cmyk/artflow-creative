@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Art Flow Creative — Business Management for Artists</title>
+    <meta name="description" content="Art Flow Creative is an all-in-one business management tool for artists — track inventory, manage invoices and orders, monitor daily financial health, and stay organized from one elegant, mobile-friendly app." />
+    <meta name="keywords" content="Art Flow Creative, artist business app, art inventory, invoice management, order tracking, expense tracking, mileage log, artist tools, creative business management" />
+    <meta name="author" content="Art Flow Creative" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://sweet-art-flow-go.base44.app" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Art Flow Creative" />
+    <meta property="og:title" content="Art Flow Creative — Business Management for Artists" />
+    <meta property="og:description" content="All-in-one business management for artists: inventory, invoices, orders, expenses, and financial health in one elegant mobile app." />
+    <meta property="og:url" content="https://sweet-art-flow-go.base44.app" />
+    <meta property="og:image" content="https://media.base44.com/images/public/6a91be5ced6058323eb21f7d/767c033d8_3E798DE5-95A7-49F9-879D-C8303E1BB25C.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Art Flow Creative — Business Management for Artists" />
+    <meta name="twitter:description" content="All-in-one business management for artists: inventory, invoices, orders, expenses, and financial health in one elegant mobile app." />
+    <meta name="twitter:image" content="https://media.base44.com/images/public/6a91be5ced6058323eb21f7d/767c033d8_3E798DE5-95A7-49F9-879D-C8303E1BB25C.png" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Art Flow Creative",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "description": "All-in-one business management tool for artists to track inventory, manage invoices and orders, and monitor daily financial health.",
+      "url": "https://sweet-art-flow-go.base44.app"
+    }
+    </script>
+
+    <meta name="theme-color" content="#B6B8D1" />
+    <script type="module" crossorigin src="/app.js"></script>
+    <link rel="stylesheet" crossorigin href="/style.css">
+    <script type="module">
+if (window.self === window.top) {
+  let lastPath = "";
+  function getPageNameFromPath(path) {
+    const segments = path.split("/").filter(Boolean);
+    return segments[0] || null;
+  }
+  function trackPageView() {
+    const path = window.location.pathname;
+    if (path === lastPath) return;
+    lastPath = path;
+    const pageName = getPageNameFromPath(path) || "home";
+    const appId = "6a91be5ced6058323eb21f7d";
+    if (!appId) return;
+    fetch(`/api/app-logs/${appId}/log-user-in-app/${pageName}`, {
+      method: "POST",
+    }).catch(() => {});
+  }
+  const originalPushState = history.pushState.bind(history);
+  history.pushState = function (...args) {
+    originalPushState(...args);
+    trackPageView();
+  };
+  const originalReplaceState = history.replaceState.bind(history);
+  history.replaceState = function (...args) {
+    originalReplaceState(...args);
+    trackPageView();
+  };
+  window.addEventListener("popstate", trackPageView);
+  trackPageView();
+}
+</script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
