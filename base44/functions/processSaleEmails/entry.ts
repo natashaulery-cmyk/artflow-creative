@@ -47,14 +47,18 @@ const productSimilar = (a = '', b = '') => {
 
 const sameSale = (a, b) => {
   if ((a.platform || '') !== (b.platform || '')) return false;
-  if ((a.sale_date || '') !== (b.sale_date || '')) return false;
-  if (amount(a.sale_total) !== amount(b.sale_total)) return false;
 
+  // Prefer stable marketplace/email identifiers. Two different IDs are two
+  // different orders even if the same product sold for the same price that day.
   const idsA = [normalized(a.order_id), normalized(a.source_email_id)].filter(Boolean);
   const idsB = [normalized(b.order_id), normalized(b.source_email_id)].filter(Boolean);
   const idOverlap = idsA.some((id) => idsB.includes(id));
-  if (idOverlap) return productSimilar(a.product_name, b.product_name);
+  if (idOverlap) return true;
+  if (idsA.length && idsB.length) return false;
 
+  // Only use the date/amount/product fingerprint for truly identifier-less rows.
+  if ((a.sale_date || '') !== (b.sale_date || '')) return false;
+  if (amount(a.sale_total) !== amount(b.sale_total)) return false;
   return productSimilar(a.product_name, b.product_name);
 };
 
@@ -98,6 +102,28 @@ export default async function(req) {
     if (!ownerId || !businessId) {
       return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
     }
+
+    // Prevent overlapping login/focus/timer syncs from importing the same email
+    // at the same time. Client-side guards do not protect multiple tabs/devices.
+    const priorStates = await base44.asServiceRole.entities.SyncState.list('-last_synced_at', 100);
+    const priorState = priorStates.find((item) => item.business_id === businessId && item.source === 'gmail_sales');
+    if (priorState?.status === 'running') {
+      const age = Date.now() - new Date(priorState.last_synced_at || 0).getTime();
+      if (Number.isFinite(age) && age >= 0 && age < 2 * 60 * 1000) {
+        return Response.json({
+          connected_email: workspace.email,
+          found: priorState.last_found || 0,
+          processed: 0,
+          created: 0,
+          migrated: 0,
+          skipped: 0,
+          errors: 0,
+          remaining: priorState.last_remaining || 0,
+          message: 'Sales sync is already running.',
+        });
+      }
+    }
+    await saveSyncState(base44, ownerId, businessId, { status: 'running', message: 'Syncing sales emails…' });
 
     const query = 'after:2026/01/01 {from:vinted.com from:depop.com from:etsy.com from:poshmark.com from:ebay.com}';
     const allMessageIds = [];
@@ -191,7 +217,11 @@ export default async function(req) {
 
     const completedEmailIds = new Set(
       importHistory
-        .filter((item) => item.import_type === 'sale' && item.status !== 'error')
+        .filter((item) =>
+          item.import_type === 'sale' &&
+          item.status !== 'error' &&
+          (!item.business_id || item.business_id === businessId)
+        )
         .map((item) => item.message_id)
     );
     const seenEmailIds = new Set(targetOrders.map((o) => o.source_email_id).filter(Boolean));
@@ -202,15 +232,33 @@ export default async function(req) {
     let skipped = 0;
     let errors = 0;
 
+    const historyByMessage = new Map();
+    for (const item of importHistory) {
+      if (item.import_type !== 'sale' || !item.message_id) continue;
+      if (item.business_id && item.business_id !== businessId) continue;
+      if (!historyByMessage.has(item.message_id)) historyByMessage.set(item.message_id, item);
+    }
+
     const recordHistory = async (messageId, status, platform, details) => {
-      await base44.asServiceRole.entities.EmailImportMessage.create({
+      const payload = {
         message_id: messageId,
         import_type: 'sale',
         status,
         platform: platform || null,
         details: String(details || '').slice(0, 500),
-        created_by_id: ownerId,
-      });
+        business_id: businessId,
+      };
+      const existing = historyByMessage.get(messageId);
+      if (existing) {
+        await base44.asServiceRole.entities.EmailImportMessage.update(existing.id, payload);
+        Object.assign(existing, payload);
+      } else {
+        const createdHistory = await base44.asServiceRole.entities.EmailImportMessage.create({
+          ...payload,
+          created_by_id: ownerId,
+        });
+        historyByMessage.set(messageId, createdHistory);
+      }
     };
 
     for (const messageId of batch) {
