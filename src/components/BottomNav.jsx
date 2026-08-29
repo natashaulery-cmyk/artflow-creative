@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   Percent,
   Car,
+  UserRound,
 } from "lucide-react";
 import {
   Drawer,
@@ -33,6 +34,7 @@ const more = [
   { label: "Mileage", to: "/mileage", icon: Car },
   { label: "Taxes", to: "/taxes", icon: Percent },
   { label: "Advisor", to: "/assistant", icon: Sparkles },
+  { label: "Account", to: "/account", icon: UserRound },
 ];
 
 export default function BottomNav() {
