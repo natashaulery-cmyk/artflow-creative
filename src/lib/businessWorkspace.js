@@ -15,7 +15,6 @@ export async function getCurrentBusinessWorkspace() {
         (b.sales_emails || []).some((item) => normalizeEmail(item) === email)
         || (b.member_emails || []).some((item) => normalizeEmail(item) === email)
       )
-      || businesses[0]
       || null;
   } catch {}
 
