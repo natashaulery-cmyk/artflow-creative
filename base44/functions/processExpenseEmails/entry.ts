@@ -115,19 +115,31 @@ export default async function(req) {
 
     const existing = await base44.asServiceRole.entities.Expense.list('-date', 5000);
 
-    // Move older expenses from prior logins into the shared workspace.
+    // Move older expenses from prior logins into the shared workspace. Use a
+    // live key set so hundreds of duplicate legacy rows cannot all create a new
+    // target copy during the same migration batch.
+    const expenseKey = (expense) => {
+      const receipt = String(expense?.receipt_id || '').trim();
+      if (receipt) return `receipt:${receipt}`;
+      return [
+        String(expense?.date || ''),
+        Number(expense?.amount || 0).toFixed(2),
+        String(expense?.description || '').trim().toLowerCase(),
+        String(expense?.category || '').trim().toLowerCase(),
+      ].join('|');
+    };
+    const targetExpenseKeys = new Set(
+      existing
+        .filter((e) => !e.archived && e.business_id === businessId)
+        .map(expenseKey)
+    );
+
     let migrated = 0;
     for (const oldExpense of existing.filter((e) => !e.archived && e.business_id !== businessId).slice(0, 150)) {
-      const duplicate = existing.some((candidate) =>
-        candidate.id !== oldExpense.id &&
-        !candidate.archived &&
-        candidate.business_id === businessId &&
-        candidate.date === oldExpense.date &&
-        Number(candidate.amount || 0).toFixed(2) === Number(oldExpense.amount || 0).toFixed(2) &&
-        String(candidate.description || '').trim().toLowerCase() === String(oldExpense.description || '').trim().toLowerCase()
-      );
+      const key = expenseKey(oldExpense);
+      const duplicate = targetExpenseKeys.has(key);
       if (!duplicate && oldExpense.date && Number(oldExpense.amount || 0) > 0) {
-        await base44.asServiceRole.entities.Expense.create({
+        const createdExpense = await base44.asServiceRole.entities.Expense.create({
           business_id: businessId,
           access_emails: accessEmails,
           date: oldExpense.date,
@@ -143,6 +155,7 @@ export default async function(req) {
           archived: false,
           created_by_id: ownerId,
         });
+        targetExpenseKeys.add(expenseKey(createdExpense || oldExpense));
         migrated++;
       }
       await base44.asServiceRole.entities.Expense.update(oldExpense.id, { archived: true });
@@ -238,7 +251,7 @@ export default async function(req) {
           'Examples that qualify include art materials and craft supplies; paints, inks, markers, pencils, adhesives, cutting tools, mats and tools; canvases and substrates; photo paper, cardstock and specialty print media; printer ink, cartridges, printheads, printers and printer maintenance; frames, mats, backing boards and display hardware; sleeves, cellophane bags, protectors, rigid mailers, envelopes, boxes, tape, labels and packaging; cameras, lenses, lighting, tripods and photography gear used to create/list products; tablets, drawing devices and production equipment; business software/subscriptions; advertising/marketing; postage and shipping; and other clearly business-related purchases used to create, photograph, package, display, market, or ship artwork. ' +
           'Exclude groceries, clothing, household/personal purchases, entertainment, personal electronics with no business evidence, marketplace sales/payouts, refunds, failed payments, unpaid quotes, buyer-paid shipping, and installment/payment-plan notices that merely repay a purchase already represented by a merchant receipt. ' +
           `This message was ${explicitlyForwarded ? '' : 'not '}explicitly forwarded/labeled by the user as ArtFlow Expense. ` +
-          'For automatic detection, only mark an item is_expense=true when business relevance is strong. Never invent an amount or split one order total across items unless the receipt gives item-level amounts. Prefer the actual charged/paid amount attributable to the business item. ' +
+          'For automatic detection, only mark an item is_expense=true when business relevance is strong. Never invent an amount or split one order total across items unless the receipt gives item-level amounts. Prefer the actual charged/paid amount attributable to the business item. Use the transaction/payment date, not a shipping, delivery, arrival, or estimated date, and never return a future date. ' +
           `Allowed categories: ${categories.join(', ')}.\nSender: ${sender}\nSubject: ${subject}\nEmail body: ${body.slice(0, 16000)}\n` +
           `Attachment names: ${parts.map((p) => p.filename).join(', ')}. Return JSON with an expenses array. Each item must contain is_expense, confidence (0 to 1), vendor, description, amount, date (YYYY-MM-DD), category, deductible_percent, and notes.`,
         file_urls: fileUrls,
@@ -286,9 +299,14 @@ export default async function(req) {
           skipped++;
           continue;
         }
-        const date = /^\d{4}-\d{2}-\d{2}$/.test(expense.date || '')
-          ? expense.date
-          : new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
+        const today = new Date().toISOString().slice(0, 10);
+        const emailDate = new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
+        const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(expense.date || '') ? expense.date : '';
+        const date = parsedDate && parsedDate <= today
+          ? parsedDate
+          : emailDate <= today
+            ? emailDate
+            : today;
         const deductiblePercent = Math.min(100, Math.max(0, Number(expense.deductible_percent) || 100));
         const category = categories.includes(expense.category) ? expense.category : 'Other Business Expense';
 
