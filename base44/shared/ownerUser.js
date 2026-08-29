@@ -19,13 +19,16 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
   const businesses = await base44.asServiceRole.entities.Business.list('name', 500);
   const activeId = user.active_business_id || user.data?.active_business_id || null;
 
-  let business = businesses.find((b) => b.id === activeId);
-  if (!business && email) {
-    business = businesses.find((b) =>
+  // Prefer a business that explicitly lists this email as a member/sales email.
+  // This keeps linked Gmail accounts in the same workspace even if an older
+  // duplicate user record points at a stray/empty active_business_id.
+  let business = email
+    ? businesses.find((b) =>
       (b.sales_emails || []).some((member) => lower(member) === email)
       || (b.member_emails || []).some((member) => lower(member) === email)
-    );
-  }
+    )
+    : null;
+  if (!business) business = businesses.find((b) => b.id === activeId);
   if (!business) business = businesses.find((b) => b.created_by_id === user.id);
 
   if (!business) {
