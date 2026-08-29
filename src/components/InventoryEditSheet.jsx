@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { calculateUnitCost } from "@/lib/orderCost";
+import { getCurrentBusinessId } from "@/lib/businessWorkspace";
 import { toast } from "sonner";
 import Field from "@/components/Field";
 import { Image } from "@/components/ui/image";
@@ -82,7 +83,9 @@ export default function InventoryEditSheet({ open, onClose, record }) {
     }
     setSaving(true);
     try {
+      const businessId = await getCurrentBusinessId();
       const payload = {
+        business_id: record?.business_id || businessId,
         category: form.category,
         name: usesSize ? form.size : form.name.trim(),
         size: usesSize ? form.size : null,
