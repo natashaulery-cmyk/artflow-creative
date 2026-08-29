@@ -135,7 +135,7 @@ export default function Orders() {
       </div>
 
       <button
-        onClick={syncEmails}
+        onClick={syncSpreadsheet}
         disabled={syncing}
         className="w-full h-11 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
       >
