@@ -4,7 +4,6 @@ import { Trash2, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import GoogleSheetsConnect from "@/components/GoogleSheetsConnect";
 import GoogleCalendarConnect from "@/components/GoogleCalendarConnect";
 import BusinessManager from "@/components/BusinessManager";
 import { toast } from "sonner";
@@ -59,8 +58,6 @@ export default function Account() {
       </section>
 
       <BusinessManager />
-
-      <GoogleSheetsConnect />
 
       <GoogleCalendarConnect />
 
