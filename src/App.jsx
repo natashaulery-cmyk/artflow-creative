@@ -10,7 +10,6 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
-import Terms from '@/pages/Terms';
 import Layout from '@/components/Layout';
 import Taxes from '@/pages/Taxes';
 import Reports from '@/pages/Reports';
@@ -32,12 +31,13 @@ const AuthenticatedApp = () => {
 
   // Legal pages must be publicly accessible for Google OAuth verification and app users.
   const publicPath = window.location.pathname.replace(/\/+$/, '') || '/';
-  if (publicPath === '/privacy' || publicPath === '/privacy-policy' || publicPath === '/terms-of-service') {
+  if (publicPath === '/privacy' || publicPath === '/privacy-policy' || publicPath === '/terms-of-service' || publicPath === '/terms') {
     return (
       <Routes>
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/terms" element={<Navigate to="/terms-of-service" replace />} />
         <Route path="*" element={<Navigate to="/privacy-policy" replace />} />
       </Routes>
     );
@@ -72,7 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
-      <Route path="/terms" element={<Terms />} />
+      <Route path="/terms" element={<Navigate to="/terms-of-service" replace />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
           <Route path="/" element={<TabShell />} />
