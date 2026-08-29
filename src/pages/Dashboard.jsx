@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus, BarChart3, UserCircle } from "lucide-react";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
+import { useOrders } from "@/lib/useOrders";
 import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/lib/format";
 import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import LowStockAlert from "@/components/LowStockAlert";
@@ -13,7 +14,7 @@ import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
 const cardLink = "block active:scale-95 transition-transform";
 
 export default function Dashboard() {
-  const { records: orders, reload: reloadOrders } = useEntity("Order", "-created_date");
+  const { records: orders, reload: reloadOrders } = useOrders();
   const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
   const { records: inventory } = useEntity("InventoryCost", "-created_date");
   const [taxRate] = useTaxRate();
