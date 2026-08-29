@@ -1,9 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
-// Per-user inventory export. Appends a single inventory item (the current
-// user's own) as a row in the "Inventory" tab of their own Google Sheet.
-// Called on demand right after an inventory item is created.
+// Inventory export. Appends a single inventory item to the spreadsheet saved
+// on the current user's account, using the app's managed Google Sheets connection.
 const SHEET_NAME = 'Inventory';
 const HEADERS = [
   'Name',
@@ -42,9 +40,7 @@ export default async function(req) {
     }
 
     const { accessToken } =
-      await base44.asServiceRole.connectors.getCurrentAppUserConnection(
-        GOOGLE_SHEETS_CONNECTOR_ID
-      );
+      await base44.asServiceRole.connectors.getConnection('googlesheets');
 
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
