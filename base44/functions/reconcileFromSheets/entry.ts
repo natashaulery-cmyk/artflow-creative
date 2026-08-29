@@ -78,9 +78,10 @@ export default async function(req) {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlesheets');
 
     // Fetch and validate everything before changing app data.
-    const [orderRows, deductionRows] = await Promise.all([
+    const [orderRows, deductionRows, expenseRows] = await Promise.all([
       fetchValues(spreadsheetId, ORDER_SHEET, accessToken),
       fetchValues(spreadsheetId, DEDUCTIONS_SHEET, accessToken),
+      fetchValues(spreadsheetId, 'Expenses', accessToken),
     ]);
 
     const orderHeaderIndex = orderRows.findIndex((r) =>
@@ -134,13 +135,21 @@ export default async function(req) {
     const di = (name) => dh[name.toLowerCase()];
 
     const expenses = [];
+    const expenseKeys = new Set();
+    const addExpense = (record) => {
+      const key = `${record.date}|${record.description.toLowerCase().trim()}|${Number(record.amount).toFixed(2)}`;
+      if (expenseKeys.has(key)) return;
+      expenseKeys.add(key);
+      expenses.push(record);
+    };
+
     for (const row of deductionRows.slice(deductionHeaderIndex + 1)) {
       const date = isoDate(row[di('date')]);
       const description = row[di('description')];
       if (!date || !description) continue;
       const pctRaw = num(row[di('deductible %')], 0);
       const deductiblePercent = pctRaw <= 1 ? pctRaw * 100 : pctRaw;
-      expenses.push({
+      addExpense({
         date,
         category: mapExpenseCategory(row[di('category')]),
         description: String(description),
@@ -150,6 +159,34 @@ export default async function(req) {
         source: 'Google Sheets',
         notes: `Imported from ${DEDUCTIONS_SHEET}`,
       });
+    }
+
+    // Preserve expenses entered through Art Flow Creative after they have been
+    // exported to the spreadsheet's Expenses tab. Exact duplicates already
+    // present in Deductions are skipped.
+    const expenseHeaderIndex = expenseRows.findIndex((r) =>
+      Array.isArray(r) && r.some((c) => /^date$/i.test(String(c || '').trim())) && r.some((c) => /description/i.test(String(c || '')))
+    );
+    if (expenseHeaderIndex >= 0) {
+      const eh = headerMap(expenseRows[expenseHeaderIndex]);
+      const ei = (name) => eh[name.toLowerCase()];
+      for (const row of expenseRows.slice(expenseHeaderIndex + 1)) {
+        const date = isoDate(row[ei('date')]);
+        const description = row[ei('description')];
+        if (!date || !description) continue;
+        const pctRaw = num(row[ei('deductible %')], 100);
+        const deductiblePercent = pctRaw <= 1 ? pctRaw * 100 : pctRaw;
+        addExpense({
+          date,
+          category: mapExpenseCategory(row[ei('category')]),
+          description: String(description),
+          amount: num(row[ei('amount')]),
+          deductible_percent: deductiblePercent,
+          deductible_amount: num(row[ei('deductible amount')]),
+          source: String(row[ei('source')] || 'Google Sheets'),
+          notes: String(row[ei('notes')] || 'Imported from Expenses'),
+        });
+      }
     }
 
     // Exact rebuild for this signed-in owner. This removes demo rows, duplicate
