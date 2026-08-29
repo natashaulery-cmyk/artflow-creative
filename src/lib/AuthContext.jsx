@@ -141,14 +141,16 @@ export const AuthProvider = ({ children }) => {
     } catch {}
   }, []);
 
-  const triggerLoginSync = useCallback(async () => {
+  const triggerLoginSync = useCallback(async ({ includeExpenses = false } = {}) => {
     if (syncInFlight.current) return;
     syncInFlight.current = true;
     publishSyncState({ status: 'syncing', at: new Date().toISOString() });
     try {
       const [sales, expenses] = await Promise.allSettled([
         base44.functions.invoke('processSaleEmails'),
-        base44.functions.invoke('processExpenseEmails'),
+        includeExpenses
+          ? base44.functions.invoke('processExpenseEmails')
+          : Promise.resolve({ data: null }),
       ]);
 
       let salesData = sales.status === 'fulfilled' ? sales.value?.data || null : null;
@@ -177,7 +179,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const id = window.setInterval(triggerLoginSync, 60 * 1000);
+
+    // Keep sales reasonably fresh without burning integration credits every minute.
+    // Expense classification can invoke AI, so run that automatically only once per
+    // hour while the app is open (plus the initial login sync and the manual button).
+    const salesId = window.setInterval(() => triggerLoginSync(), 5 * 60 * 1000);
+    const expenseId = window.setInterval(
+      () => triggerLoginSync({ includeExpenses: true }),
+      60 * 60 * 1000
+    );
     const syncWhenActive = () => {
       if (document.visibilityState === 'visible') triggerLoginSync();
     };
@@ -185,7 +195,8 @@ export const AuthProvider = ({ children }) => {
     window.addEventListener('online', syncWhenActive);
     document.addEventListener('visibilitychange', syncWhenActive);
     return () => {
-      window.clearInterval(id);
+      window.clearInterval(salesId);
+      window.clearInterval(expenseId);
       window.removeEventListener('focus', syncWhenActive);
       window.removeEventListener('online', syncWhenActive);
       document.removeEventListener('visibilitychange', syncWhenActive);
@@ -205,8 +216,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
-      // Sync immediately after login; a one-minute timer and focus/online triggers keep it fresh.
-      triggerLoginSync();
+      // Sync immediately after login, including expenses. After that, sales refresh
+      // every five minutes while the app is open and expenses refresh hourly.
+      triggerLoginSync({ includeExpenses: true });
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
