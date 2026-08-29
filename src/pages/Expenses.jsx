@@ -11,20 +11,7 @@ import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
 import PageHeader from "@/components/PageHeader";
 import { useModalRoute } from "@/hooks/useModalRoute";
-
-const categories = [
-  "All",
-  "Inventory / Frames",
-  "Printing Supplies",
-  "Packaging",
-  "Equipment",
-  "Office Expense",
-  "Software & Subscriptions",
-  "Phone / Internet",
-  "Advertising",
-  "Shipping",
-  "Other",
-];
+import { EXPENSE_CATEGORY_FILTERS } from "@/lib/expenseCategories";
 
 export default function Expenses() {
   const { records, reload: reloadExpenses } = useEntity("Expense", "-date");
@@ -119,8 +106,8 @@ export default function Expenses() {
 
       <section className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] space-y-3">
         <div>
-          <p className="font-medium">Forwarded expense emails</p>
-          <p className="text-xs text-muted-foreground mt-1">Send or forward one email to your connected Gmail with the subject ArtFlow Expense. Attach one receipt or a batch of receipts; each attachment becomes a separate expense.</p>
+          <p className="font-medium">Automatic art expense sync</p>
+          <p className="text-xs text-muted-foreground mt-1">Art Flow checks connected Gmail for paid art-business purchases and receipts, including supplies, printing, packaging, frames, equipment, photography gear, software, shipping, and other clearly business-related art expenses. You can still forward a receipt with the subject ArtFlow Expense for anything it misses.</p>
         </div>
         <button
           onClick={importForwardedExpenses}
@@ -128,7 +115,7 @@ export default function Expenses() {
           className="w-full h-11 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
         >
           <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
-          {importingEmail ? "Checking expense emails…" : "Import Forwarded Expenses"}
+          {importingEmail ? "Checking art-business expenses…" : "Sync Art Expenses"}
         </button>
       </section>
 
@@ -140,7 +127,7 @@ export default function Expenses() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {categories.map((c) => (
+        {EXPENSE_CATEGORY_FILTERS.map((c) => (
           <button
             key={c}
             onClick={() => setFilter(c)}
