@@ -60,8 +60,8 @@ export default function Expenses() {
   }, [records, filter]);
 
   const totalAll = useMemo(
-    () => records.reduce((s, e) => s + (e.amount || 0), 0) + frameTotal,
-    [records, frameTotal]
+    () => records.reduce((s, e) => s + (e.amount || 0), 0),
+    [records]
   );
 
   const grouped = useMemo(() => {
@@ -145,7 +145,10 @@ export default function Expenses() {
       {filter === "All" && frameItems.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-2 px-1">
-            <h2 className="font-heading text-base">Inventory / Frames</h2>
+            <div>
+              <h2 className="font-heading text-base">Frame Inventory on Hand</h2>
+              <p className="text-[11px] text-muted-foreground">Asset value — not added again to expenses</p>
+            </div>
             <span className="text-sm text-foreground">
               {formatMoney(frameTotal)}
             </span>
