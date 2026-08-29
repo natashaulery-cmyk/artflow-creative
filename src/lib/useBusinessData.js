@@ -10,7 +10,9 @@ export function useEntity(entityName, sort = "-created_date", limit = 1000) {
   const reload = useCallback(async () => {
     try {
       const data = await entity.list(sort, limit);
-      setRecords(data);
+      // Archived rows are retained only as a rollback/safety copy and must
+      // never affect dashboards, reports, taxes, inventory, or order totals.
+      setRecords(data.filter((r) => r?.archived !== true));
     } catch (e) {
       console.error(`Failed to load ${entityName}:`, e);
     } finally {
@@ -24,9 +26,15 @@ export function useEntity(entityName, sort = "-created_date", limit = 1000) {
     if (typeof entity.subscribe === "function") {
       unsub = entity.subscribe((event) => {
         setRecords((prev) => {
-          if (event.type === "create") return [event.data, ...prev];
-          if (event.type === "update")
+          if (event.type === "create") {
+            return event.data?.archived === true ? prev : [event.data, ...prev];
+          }
+          if (event.type === "update") {
+            if (event.data?.archived === true) {
+              return prev.filter((r) => r.id !== event.data.id);
+            }
             return prev.map((r) => (r.id === event.data.id ? event.data : r));
+          }
           if (event.type === "delete") return prev.filter((r) => r.id !== event.data.id);
           return prev;
         });
