@@ -3,6 +3,7 @@ import { Plus, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { useEntity } from "@/lib/useBusinessData";
+import { useOrders } from "@/lib/useOrders";
 import { formatMoney, formatDate, monthKey, monthLabel } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
 import ExpenseForm from "@/components/ExpenseForm";
@@ -28,7 +29,7 @@ const categories = [
 export default function Expenses() {
   const { records, reload: reloadExpenses } = useEntity("Expense", "-date");
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
-  const { records: orders } = useEntity("Order", "-sale_date");
+  const { records: orders } = useOrders();
   const refresh = async () => { await reloadExpenses(); };
   const [filter, setFilter] = useState("All");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
