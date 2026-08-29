@@ -46,7 +46,6 @@ export function useEntity(entityName, sort = "-created_date", limit = 1000) {
       window.removeEventListener("artflow:data-synced", onSynced);
       if (unsub) unsub();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityName]);
 
   return { records, loading, reload };
