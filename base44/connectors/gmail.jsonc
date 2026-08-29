@@ -1,7 +1,0 @@
-{
-  "type": "gmail",
-  "scopes": [
-    "email",
-    "https://www.googleapis.com/auth/gmail.readonly"
-  ]
-}
