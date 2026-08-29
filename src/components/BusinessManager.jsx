@@ -90,6 +90,12 @@ export default function BusinessManager() {
   const members = Array.from(
     new Set([...(business.member_emails || []), user.email].map(normalizeEmail).filter(Boolean))
   );
+  const salesEmails = Array.from(
+    new Set([
+      ...(business.sales_emails || []),
+      business.primary_email,
+    ].map(normalizeEmail).filter(Boolean))
+  );
 
   return (
     <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))] space-y-5">
@@ -155,14 +161,18 @@ export default function BusinessManager() {
       <div>
         <div className="flex items-center gap-2 mb-2">
           <Link2 className="w-4 h-4 text-[hsl(var(--primary))]" />
-          <p className="text-sm font-semibold">Connected sales inbox</p>
+          <p className="text-sm font-semibold">Sales emails</p>
         </div>
-        <div className="rounded-2xl bg-muted px-4 py-3 text-sm">
-          <p className="font-medium truncate">{business.primary_email || "Connected Gmail"}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Marketplace sales are imported from this Gmail account.
-          </p>
+        <div className="space-y-2">
+          {salesEmails.map((email) => (
+            <div key={email} className="rounded-2xl bg-muted px-4 py-3 text-sm">
+              <p className="font-medium truncate">{email}</p>
+            </div>
+          ))}
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Marketplace sales from either connected Gmail account use this same business workspace.
+        </p>
       </div>
 
       <div>
@@ -174,9 +184,9 @@ export default function BusinessManager() {
               className="rounded-2xl border border-[hsl(var(--border))] px-4 py-3 flex items-center justify-between gap-2"
             >
               <span className="text-sm truncate">{email}</span>
-              {email === normalizeEmail(business.primary_email) && (
+              {salesEmails.includes(email) && (
                 <span className="text-[10px] font-semibold uppercase text-muted-foreground shrink-0">
-                  Sales inbox
+                  Sales email
                 </span>
               )}
             </div>
@@ -202,7 +212,7 @@ export default function BusinessManager() {
           </button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Linked sign-ins see the same business data. Adding an email here does not change the sales inbox.
+          Linked sign-ins see the same business data. Sales emails are listed separately above.
         </p>
       </div>
     </section>
