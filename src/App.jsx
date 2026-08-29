@@ -32,9 +32,10 @@ const AuthenticatedApp = () => {
 
   // Legal pages must be publicly accessible for Google OAuth verification and app users.
   const publicPath = window.location.pathname.replace(/\/+$/, '') || '/';
-  if (publicPath === '/privacy-policy' || publicPath === '/terms-of-service') {
+  if (publicPath === '/privacy' || publicPath === '/privacy-policy' || publicPath === '/terms-of-service') {
     return (
       <Routes>
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="*" element={<Navigate to="/privacy-policy" replace />} />
@@ -68,6 +69,7 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/terms" element={<Terms />} />
