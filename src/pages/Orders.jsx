@@ -9,6 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import { useModalRoute } from "@/hooks/useModalRoute";
 import { useLocation } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
+import SyncStatus from "@/components/SyncStatus";
 import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
 import { toast } from "sonner";
 
@@ -81,6 +82,7 @@ export default function Orders() {
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
       <PageHeader title="Orders" subtitle="Sold items across platforms" />
+      <SyncStatus totalOrders={orders.length} />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         <button
