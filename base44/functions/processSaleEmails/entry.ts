@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
+import { resolveOwnerUserId } from '../../shared/ownerUser.js';
 
 const decode = (value = '') => {
   const clean = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -26,30 +27,20 @@ export default async function(req) {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
     const query = 'after:2026/01/01 (from:vinted.com OR from:depop.com OR from:etsy.com OR from:poshmark.com OR from:ebay.com) (sold OR sale OR order)';
-    const messageIds = [];
-    let pageToken = '';
-    do {
-      const params = new URLSearchParams({ q: query, maxResults: '100' });
-      if (pageToken) params.set('pageToken', pageToken);
-      const listRes = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
-        { headers }
-      );
-      if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
-      const page = await listRes.json();
-      messageIds.push(...(page.messages || []).map((m) => m.id));
-      pageToken = page.nextPageToken || '';
-    } while (pageToken);
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`,
+      { headers }
+    );
+    if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
+    const messageIds = ((await listRes.json()).messages || []).map((m) => m.id);
 
     const [inventoryCosts, existingOrders] = await Promise.all([
       base44.entities.InventoryCost.list('size', 100),
       base44.entities.Order.list('-created_date', 5000),
     ]);
     const seenEmailIds = new Set(existingOrders.map((o) => o.source_email_id).filter(Boolean));
-    const normalizeOrderId = (value) => String(value || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    const seenOrderIds = new Set(existingOrders.map((o) => normalizeOrderId(o.order_id)).filter(Boolean));
     const seenOrderKeys = new Set(
-      existingOrders.map((o) => `${o.platform}|${o.product_name}|${o.sale_date}|${Number(o.sale_total || 0).toFixed(2)}`)
+      existingOrders.map((o) => `${o.platform}|${o.order_id || ''}|${o.product_name}|${o.sale_date}`)
     );
 
     let created = 0;
@@ -110,13 +101,11 @@ export default async function(req) {
       const allowedPlatforms = ['Vinted', 'Depop', 'Etsy', 'Poshmark', 'eBay'];
       const platform = allowedPlatforms.includes(order.platform) ? order.platform :
         (/etsy/i.test(sender) ? 'Etsy' : /poshmark/i.test(sender) ? 'Poshmark' : /ebay/i.test(sender) ? 'eBay' : /depop/i.test(sender) ? 'Depop' : 'Vinted');
-      const emailDate = new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
-      const today = new Date().toISOString().slice(0, 10);
-      const extractedDate = /^\d{4}-\d{2}-\d{2}$/.test(order.sale_date || '') ? order.sale_date : '';
-      const saleDate = extractedDate >= '2026-01-01' && extractedDate <= today ? extractedDate : emailDate;
-      const normalizedOrderId = normalizeOrderId(order.order_id);
-      const key = `${platform}|${order.product_name}|${saleDate}|${(price * quantity).toFixed(2)}`;
-      if ((normalizedOrderId && seenOrderIds.has(normalizedOrderId)) || seenOrderKeys.has(key)) {
+      const saleDate = /^\d{4}-\d{2}-\d{2}$/.test(order.sale_date || '')
+        ? order.sale_date
+        : new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
+      const key = `${platform}|${order.order_id || ''}|${order.product_name}|${saleDate}`;
+      if (seenOrderKeys.has(key)) {
         skipped++;
         continue;
       }
@@ -141,7 +130,6 @@ export default async function(req) {
       });
 
       seenEmailIds.add(messageId);
-      if (normalizedOrderId) seenOrderIds.add(normalizedOrderId);
       seenOrderKeys.add(key);
       created++;
     }
