@@ -1,0 +1,68 @@
+{
+  "name": "EtsyConnection",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "etsy_user_id": {
+      "type": "string"
+    },
+    "shop_id": {
+      "type": "string"
+    },
+    "shop_name": {
+      "type": "string"
+    },
+    "access_token": {
+      "type": "string"
+    },
+    "refresh_token": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "scopes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "disconnected",
+        "error"
+      ]
+    },
+    "oauth_state": {
+      "type": "string"
+    },
+    "pkce_verifier": {
+      "type": "string"
+    },
+    "redirect_uri": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
