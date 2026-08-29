@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Check, Link2, Pencil, Plus, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useEntity } from "@/lib/useBusinessData";
 import { toast } from "sonner";
 
@@ -8,15 +9,11 @@ const normalizeEmail = (value = "") => String(value).trim().toLowerCase();
 
 export default function BusinessManager() {
   const { records: businesses, loading, reload } = useEntity("Business", "name");
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
 
   const activeId = user?.active_business_id || user?.data?.active_business_id || null;
   const business = useMemo(() => {
