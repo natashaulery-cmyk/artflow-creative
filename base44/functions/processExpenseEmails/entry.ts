@@ -299,7 +299,7 @@ export default async function(req) {
           deductible_amount: expenseAmount * deductiblePercent / 100,
           source: expense.vendor || sender,
           receipt_id: receiptId,
-          notes: expense.notes || 'Imported from a batch email marked ArtFlow Expense',
+          notes: expense.notes || (explicitlyForwarded ? 'Imported from an ArtFlow Expense email' : 'Automatically recognized from a purchase receipt'),
           sync_source: 'gmail_auto',
           auto_classified: !explicitlyForwarded,
           confidence,
@@ -309,7 +309,7 @@ export default async function(req) {
         created++;
         messageCreated++;
       }
-      await recordHistory(id, 'processed', messageCreated ? `Imported ${messageCreated} art-business expense(s)` : 'No qualifying art-business expense found');
+      await recordHistory(id, messageCreated ? 'imported' : 'skipped', messageCreated ? `Imported ${messageCreated} art-business expense(s)` : 'No qualifying art-business expense found');
     }
 
     const remaining = Math.max(0, pendingIds.length - batch.length);
