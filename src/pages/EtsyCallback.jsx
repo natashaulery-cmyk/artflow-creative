@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { appParams } from "@/lib/app-params";
 
 export default function EtsyCallback() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function EtsyCallback() {
       const code = params.get("code") || "";
       const oauthState = params.get("state") || "";
       try {
-        const redirectUri = `${window.location.origin}/etsy/callback`;
+        const redirectUri = `${String(appParams.appBaseUrl || window.location.origin).replace(/\/$/, "")}/etsy/callback`;
         const res = await base44.functions.invoke("finishEtsyOAuth", { code, state: oauthState, redirect_uri: redirectUri });
         const data = res?.data || {};
         if (!data.connected) throw new Error(data.error || "Could not connect Etsy.");
