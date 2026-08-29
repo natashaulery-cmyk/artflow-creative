@@ -9,7 +9,8 @@
       "type": "string",
       "enum": [
         "gmail_sales",
-        "gmail_expenses"
+        "gmail_expenses",
+        "vinted_api"
       ]
     },
     "last_synced_at": {
@@ -37,6 +38,10 @@
     },
     "message": {
       "type": "string"
+    },
+    "cursor": {
+      "type": "string",
+      "description": "Opaque or numeric source cursor used to continue a paginated backfill without rescanning completed records."
     }
   },
   "required": [
