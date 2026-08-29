@@ -154,20 +154,11 @@ export const AuthProvider = ({ children }) => {
       let salesData = sales.status === 'fulfilled' ? sales.value?.data || null : null;
       const expenseData = expenses.status === 'fulfilled' ? expenses.value?.data || null : null;
 
-      // Drain historical backfill immediately instead of waiting for the next
-      // scheduled run. Each backend pass is bounded, so this safely catches up
-      // accounts with hundreds of orders while keeping new sales prioritized.
-      let backfillPass = 0;
-      while (Number(salesData?.remaining || 0) > 0 && backfillPass < 12) {
-        if (/already running/i.test(String(salesData?.message || ''))) break;
-        window.dispatchEvent(new CustomEvent('artflow:data-synced', {
-          detail: { status: 'syncing', at: new Date().toISOString(), sales: salesData, expenses: expenseData },
-        }));
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        const next = await base44.functions.invoke('processSaleEmails');
-        salesData = next?.data || null;
-        backfillPass += 1;
-      }
+      // Do not drain historical backfill from the browser. The server already
+      // runs the importer on a schedule, and repeatedly invoking it here can
+      // exhaust connector / AI integration quotas and cause every sync to fail.
+      // One foreground pass is enough to prioritize fresh orders; background
+      // runs continue the historical catch-up safely.
 
       const state = {
         status: 'ok',
