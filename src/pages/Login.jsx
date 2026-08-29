@@ -41,7 +41,6 @@ export default function Login() {
         <GoogleIcon className="w-5 h-5 mr-2" />
         Continue with Google
       </Button>
-
       <p className="text-center text-xs text-muted-foreground mt-5">
         <Link to="/terms-of-service" className="text-primary hover:underline">
           Terms of Service
