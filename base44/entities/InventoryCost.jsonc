@@ -46,6 +46,17 @@
     "low_stock_level": {
       "type": "number",
       "default": 5
+    },
+    "business_id": {
+      "type": "string",
+      "description": "Business workspace that owns this inventory item"
+    },
+    "access_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails allowed to access this inventory item"
     }
   },
   "required": [
@@ -54,13 +65,40 @@
   ],
   "rls": {
     "read": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        },
+        {
+          "data.access_emails": "{{user.email}}"
+        }
+      ]
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        },
+        {
+          "data.access_emails": "{{user.email}}"
+        }
+      ]
     },
     "delete": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        }
+      ]
     }
   }
 }
