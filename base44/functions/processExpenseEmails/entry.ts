@@ -60,7 +60,7 @@ export default async function(req) {
     } catch {}
 
     workspace = await resolveBusinessWorkspace(base44, connectedEmail);
-    const { ownerId, businessId } = workspace;
+    const { ownerId, businessId, accessEmails = [] } = workspace;
     if (!ownerId || !businessId) {
       return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
     }
@@ -96,6 +96,7 @@ export default async function(req) {
       if (!duplicate && oldExpense.date && Number(oldExpense.amount || 0) > 0) {
         await base44.asServiceRole.entities.Expense.create({
           business_id: businessId,
+          access_emails: accessEmails,
           date: oldExpense.date,
           category: oldExpense.category,
           description: oldExpense.description,
@@ -209,6 +210,7 @@ export default async function(req) {
 
         await base44.asServiceRole.entities.Expense.create({
           business_id: businessId,
+          access_emails: accessEmails,
           date,
           category,
           description: expense.description || expense.vendor || 'Forwarded receipt',
