@@ -24,10 +24,16 @@ export function useOrders() {
     const onVisible = () => {
       if (document.visibilityState === "visible") reload();
     };
+    // Scheduled imports run on the server even when this tab did not initiate
+    // them, so lightly poll while visible to surface new orders within seconds.
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") reload();
+    }, 10 * 1000);
     window.addEventListener("artflow:data-synced", onSynced);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      window.clearInterval(id);
       window.removeEventListener("artflow:data-synced", onSynced);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
