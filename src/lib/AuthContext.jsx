@@ -150,11 +150,30 @@ export const AuthProvider = ({ children }) => {
         base44.functions.invoke('processSaleEmails'),
         base44.functions.invoke('processExpenseEmails'),
       ]);
+
+      let salesData = sales.status === 'fulfilled' ? sales.value?.data || null : null;
+      const expenseData = expenses.status === 'fulfilled' ? expenses.value?.data || null : null;
+
+      // Drain historical backfill immediately instead of waiting for the next
+      // scheduled run. Each backend pass is bounded, so this safely catches up
+      // accounts with hundreds of orders while keeping new sales prioritized.
+      let backfillPass = 0;
+      while (Number(salesData?.remaining || 0) > 0 && backfillPass < 12) {
+        if (/already running/i.test(String(salesData?.message || ''))) break;
+        window.dispatchEvent(new CustomEvent('artflow:data-synced', {
+          detail: { status: 'syncing', at: new Date().toISOString(), sales: salesData, expenses: expenseData },
+        }));
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        const next = await base44.functions.invoke('processSaleEmails');
+        salesData = next?.data || null;
+        backfillPass += 1;
+      }
+
       const state = {
         status: 'ok',
         at: new Date().toISOString(),
-        sales: sales.status === 'fulfilled' ? sales.value?.data || null : null,
-        expenses: expenses.status === 'fulfilled' ? expenses.value?.data || null : null,
+        sales: salesData,
+        expenses: expenseData,
       };
       publishSyncState(state);
       window.dispatchEvent(new CustomEvent('artflow:data-synced', { detail: state }));
@@ -167,7 +186,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const id = window.setInterval(triggerLoginSync, 5 * 60 * 1000);
+    const id = window.setInterval(triggerLoginSync, 60 * 1000);
     const syncWhenActive = () => {
       if (document.visibilityState === 'visible') triggerLoginSync();
     };
@@ -195,7 +214,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
-      // Sync immediately after login; a five-minute timer and focus/online triggers keep it fresh.
+      // Sync immediately after login; a one-minute timer and focus/online triggers keep it fresh.
       triggerLoginSync();
     } catch (error) {
       console.error('User auth check failed:', error);
