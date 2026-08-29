@@ -1,9 +1,0 @@
-{
-  "enableUsernamePassword": true,
-  "enableGoogleLogin": true,
-  "enableMicrosoftLogin": false,
-  "enableFacebookLogin": false,
-  "enableAppleLogin": true,
-  "googleOAuthMode": "custom",
-  "googleOAuthClientId": null
-}
