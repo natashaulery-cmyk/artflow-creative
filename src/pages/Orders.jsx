@@ -30,13 +30,19 @@ export default function Orders() {
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [syncing, setSyncing] = useState(false);
 
-  const syncEmails = async () => {
+  const syncSpreadsheet = async () => {
     setSyncing(true);
     try {
-      const res = await base44.functions.invoke("processSaleEmails", {});
-      toast.success(`Synced ${res.data?.created || 0} new order(s)`);
+      const res = await base44.functions.invoke("reconcileFromSheets", {});
+      const totals = res.data?.totals;
+      toast.success(
+        totals
+          ? `Spreadsheet synced — ${res.data?.orders || 0} sales rows, $${Number(totals.sales || 0).toFixed(2)} total sales`
+          : "Spreadsheet synced"
+      );
+      await reloadOrders();
     } catch (e) {
-      toast.error("Email sync failed — connect Gmail first");
+      toast.error("Spreadsheet sync failed", { description: e?.response?.data?.error || e?.message });
     } finally {
       setSyncing(false);
     }
@@ -133,7 +139,7 @@ export default function Orders() {
         disabled={syncing}
         className="w-full h-11 rounded-2xl bg-card border border-[hsl(var(--border))] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
       >
-        <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync Emails
+        <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> Sync Spreadsheet
       </button>
 
       <div className="relative">
