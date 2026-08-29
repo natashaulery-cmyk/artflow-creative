@@ -7,7 +7,7 @@ import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
 import PageHeader from "@/components/PageHeader";
 import { useModalRoute } from "@/hooks/useModalRoute";
-import { useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
 import { toast } from "sonner";
@@ -16,16 +16,14 @@ export default function Orders() {
   const { records: orders, reload: reloadOrders } = useEntity("Order", "-sale_date");
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
   const refresh = async () => { await reloadOrders(); };
-  const initialMonth = new URLSearchParams(window.location.search).get("month");
+  const { pathname } = useLocation();
   const [platformFilter, setPlatformFilter] = useState("All");
-  const [monthFilter, setMonthFilter] = useState(initialMonth || "All");
-  const [searchParams] = useSearchParams();
-  const monthParam = searchParams.get("month");
-  // Sync the month filter when arriving via a ?month= deep link (e.g. from the
-  // Dashboard). Needed because this view is kept mounted across tab switches.
+  const [monthFilter, setMonthFilter] = useState(currentMonthKey());
+  // This tab stays mounted between visits. Reset it to the newest month whenever
+  // the user opens Orders so an older selection such as January cannot persist.
   useEffect(() => {
-    if (monthParam) setMonthFilter(monthParam);
-  }, [monthParam]);
+    if (pathname === "/orders") setMonthFilter(currentMonthKey());
+  }, [pathname]);
   const [search, setSearch] = useState("");
   const { isOpen: formOpen, open: openForm, close: closeForm } = useModalRoute();
   const [importingEmail, setImportingEmail] = useState(false);
