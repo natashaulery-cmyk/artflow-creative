@@ -7,6 +7,7 @@ import { formatMoney, formatMoneyShort, formatDate, currentMonthKey } from "@/li
 import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import LowStockAlert from "@/components/LowStockAlert";
 import PageHeader from "@/components/PageHeader";
+import SyncStatus from "@/components/SyncStatus";
 import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
 
 const cardLink = "block active:scale-95 transition-transform";
@@ -82,6 +83,8 @@ export default function Dashboard() {
           </Link>
         }
       />
+
+      <SyncStatus totalOrders={orders.length} />
 
       <LowStockAlert records={inventory} />
 
