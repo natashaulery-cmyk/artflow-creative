@@ -25,7 +25,7 @@ export default function BusinessManager() {
     return (
       businesses.find((b) => b.id === activeId) ||
       businesses.find((b) => (b.member_emails || []).some((member) => normalizeEmail(member) === email)) ||
-      businesses[0]
+      null
     );
   }, [businesses, activeId, user?.email]);
 
