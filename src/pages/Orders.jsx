@@ -37,6 +37,32 @@ export default function Orders() {
   const importEmailSales = async () => {
     setImportingEmail(true);
     try {
+      const directSources = ["syncVintedPro", "syncDepopPartner"];
+      const directMessages = [];
+
+      // Direct marketplace APIs are authoritative when available. Drain their
+      // paginated history first so large shops can catch up in one button press.
+      for (const functionName of directSources) {
+        try {
+          let res = await base44.functions.invoke(functionName, {});
+          let data = res?.data || {};
+          let pass = 0;
+          while (data.more_possible && pass < 12) {
+            await reloadOrders();
+            await new Promise((resolve) => window.setTimeout(resolve, 350));
+            res = await base44.functions.invoke(functionName, {});
+            data = res?.data || {};
+            pass += 1;
+          }
+          if (data.available !== false && data.message) directMessages.push(data.message);
+        } catch (e) {
+          // Gmail remains the fallback until a marketplace grants production API
+          // credentials, so one unavailable direct source must not block syncing.
+          const message = e?.response?.data?.error || e?.message || "";
+          if (message) directMessages.push(message);
+        }
+      }
+
       let res = await base44.functions.invoke("processSaleEmails", {});
       let data = res?.data || {};
       let pass = 0;
@@ -52,7 +78,7 @@ export default function Orders() {
         pass += 1;
       }
 
-      toast.success(data.message || "All available sales are synced");
+      toast.success(data.message || directMessages.at(-1) || "All available sales are synced");
       await reloadOrders();
     } catch (e) {
       toast.error("Sales sync failed", { description: e?.response?.data?.error || e?.message });
