@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { useEntity, useTaxRate } from "@/lib/useBusinessData";
+import { useOrders } from "@/lib/useOrders";
 import { formatMoney } from "@/lib/format";
 import { StatCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import MonthlySummary from "@/components/MonthlySummary";
@@ -42,7 +43,7 @@ function inPeriod(dateStr, key) {
 
 export default function Reports() {
   const navigate = useNavigate();
-  const { records: orders, reload: reloadOrders } = useEntity("Order", "-created_date");
+  const { records: orders, reload: reloadOrders } = useOrders();
   const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
   const [period, setPeriod] = useState("thisMonth");
   const [taxRate] = useTaxRate();
