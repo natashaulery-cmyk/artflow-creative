@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { calculateOrderCosts } from "@/lib/orderCost";
+import { getCurrentBusinessId } from "@/lib/businessWorkspace";
 import { PLATFORMS } from "@/lib/platforms";
 import { toast } from "sonner";
 import Field from "@/components/Field";
@@ -48,7 +49,9 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
           estimated_profit: +(costs.sale_total - manualCost).toFixed(2),
         };
       }
+      const businessId = await getCurrentBusinessId();
       await base44.entities.Order.create({
+        business_id: businessId,
         sale_date: form.sale_date,
         platform: form.platform,
         order_id: form.order_id || null,
