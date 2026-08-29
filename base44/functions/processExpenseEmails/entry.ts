@@ -286,7 +286,7 @@ export default async function(req) {
           ? expense.date
           : new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
         const deductiblePercent = Math.min(100, Math.max(0, Number(expense.deductible_percent) || 100));
-        const category = categories.includes(expense.category) ? expense.category : 'Other';
+        const category = categories.includes(expense.category) ? expense.category : 'Other Business Expense';
 
         await base44.asServiceRole.entities.Expense.create({
           business_id: businessId,
