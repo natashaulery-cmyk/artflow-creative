@@ -24,7 +24,7 @@ export default async function(req) {
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
-    const query = 'newer_than:120d subject:"ArtFlow Expense"';
+    const query = 'after:2026/01/01 subject:"ArtFlow Expense"';
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`,
       { headers }
