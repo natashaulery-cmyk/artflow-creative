@@ -130,6 +130,8 @@ export default async function(req) {
         // Some spreadsheet rows intentionally leave Estimated Profit blank,
         // so calculate it from those two source-of-truth columns here.
         estimated_profit: +(saleTotal - totalCost).toFixed(2),
+        archived: false,
+        sync_source: 'google_sheet',
       });
     }
     if (!orders.length) throw new Error('No valid order rows were found in the spreadsheet.');
@@ -165,6 +167,8 @@ export default async function(req) {
         deductible_amount: num(row[di('deductible amount')]),
         source: 'Google Sheets',
         notes: `Imported from ${DEDUCTIONS_SHEET}`,
+        archived: false,
+        sync_source: 'google_sheet',
       });
     }
 
@@ -192,6 +196,8 @@ export default async function(req) {
           deductible_amount: num(row[ei('deductible amount')]),
           source: String(row[ei('source')] || 'Google Sheets'),
           notes: String(row[ei('notes')] || 'Imported from Expenses'),
+          archived: false,
+          sync_source: 'google_sheet',
         });
       }
     }
