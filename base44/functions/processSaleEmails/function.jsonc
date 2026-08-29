@@ -9,7 +9,7 @@
       "schedule_type": "cron",
       "cron_expression": "* * * * *",
       "description": "Import completed Vinted, Depop, Etsy, Poshmark, and eBay sales from Gmail",
-      "is_active": true
+      "is_active": false
     }
   ]
 }
