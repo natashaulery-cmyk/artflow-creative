@@ -38,8 +38,10 @@ export default async function(req) {
       base44.entities.Order.list('-created_date', 5000),
     ]);
     const seenEmailIds = new Set(existingOrders.map((o) => o.source_email_id).filter(Boolean));
+    const normalizeOrderId = (value) => String(value || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const seenOrderIds = new Set(existingOrders.map((o) => normalizeOrderId(o.order_id)).filter(Boolean));
     const seenOrderKeys = new Set(
-      existingOrders.map((o) => `${o.platform}|${o.order_id || ''}|${o.product_name}|${o.sale_date}`)
+      existingOrders.map((o) => `${o.platform}|${o.product_name}|${o.sale_date}|${Number(o.sale_total || 0).toFixed(2)}`)
     );
 
     let created = 0;
@@ -100,11 +102,13 @@ export default async function(req) {
       const allowedPlatforms = ['Vinted', 'Depop', 'Etsy', 'Poshmark', 'eBay'];
       const platform = allowedPlatforms.includes(order.platform) ? order.platform :
         (/etsy/i.test(sender) ? 'Etsy' : /poshmark/i.test(sender) ? 'Poshmark' : /ebay/i.test(sender) ? 'eBay' : /depop/i.test(sender) ? 'Depop' : 'Vinted');
-      const saleDate = /^\d{4}-\d{2}-\d{2}$/.test(order.sale_date || '')
-        ? order.sale_date
-        : new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
-      const key = `${platform}|${order.order_id || ''}|${order.product_name}|${saleDate}`;
-      if (seenOrderKeys.has(key)) {
+      const emailDate = new Date(Number(msg.internalDate) || Date.now()).toISOString().slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
+      const extractedDate = /^\d{4}-\d{2}-\d{2}$/.test(order.sale_date || '') ? order.sale_date : '';
+      const saleDate = extractedDate >= '2026-01-01' && extractedDate <= today ? extractedDate : emailDate;
+      const normalizedOrderId = normalizeOrderId(order.order_id);
+      const key = `${platform}|${order.product_name}|${saleDate}|${(price * quantity).toFixed(2)}`;
+      if ((normalizedOrderId && seenOrderIds.has(normalizedOrderId)) || seenOrderKeys.has(key)) {
         skipped++;
         continue;
       }
@@ -129,6 +133,7 @@ export default async function(req) {
       });
 
       seenEmailIds.add(messageId);
+      if (normalizedOrderId) seenOrderIds.add(normalizedOrderId);
       seenOrderKeys.add(key);
       created++;
     }
