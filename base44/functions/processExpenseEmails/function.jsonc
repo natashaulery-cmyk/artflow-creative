@@ -9,7 +9,7 @@
       "schedule_type": "cron",
       "cron_expression": "*/5 * * * *",
       "description": "Import Gmail receipts and bills marked ArtFlow Expense",
-      "is_active": true
+      "is_active": false
     }
   ]
 }
