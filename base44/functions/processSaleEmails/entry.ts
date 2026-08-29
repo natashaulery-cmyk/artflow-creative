@@ -26,12 +26,20 @@ export default async function(req) {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
     const query = 'after:2026/01/01 (from:vinted.com OR from:depop.com OR from:etsy.com OR from:poshmark.com OR from:ebay.com) (sold OR sale OR order)';
-    const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`,
-      { headers }
-    );
-    if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
-    const messageIds = ((await listRes.json()).messages || []).map((m) => m.id);
+    const messageIds = [];
+    let pageToken = '';
+    do {
+      const params = new URLSearchParams({ q: query, maxResults: '100' });
+      if (pageToken) params.set('pageToken', pageToken);
+      const listRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
+        { headers }
+      );
+      if (!listRes.ok) throw new Error('Could not read Gmail: ' + (await listRes.text()));
+      const page = await listRes.json();
+      messageIds.push(...(page.messages || []).map((m) => m.id));
+      pageToken = page.nextPageToken || '';
+    } while (pageToken);
 
     const [inventoryCosts, existingOrders] = await Promise.all([
       base44.entities.InventoryCost.list('size', 100),
