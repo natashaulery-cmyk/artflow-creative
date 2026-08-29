@@ -1,0 +1,15 @@
+{
+  "name": "syncEtsy",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Sync Etsy orders every minute",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "* * * * *",
+      "description": "Sync Etsy shop receipts directly through Etsy Open API v3 when the shop is connected",
+      "is_active": true
+    }
+  ]
+}
