@@ -34,7 +34,7 @@ export default function SyncStatus({ totalOrders = 0 }) {
           <CheckCircle2 className="w-4 h-4 text-[hsl(var(--primary))] shrink-0" />
         )}
         <span className="text-muted-foreground truncate">
-          {syncing ? "Syncing sales and expenses…" : when ? `Synced ${when}` : "Automatic sync every 5 minutes"}
+          {syncing ? "Syncing sales and expenses…" : when ? `Synced ${when}` : "Automatic sync every minute"}
         </span>
       </div>
       <span className="font-medium text-foreground shrink-0">{totalOrders} orders</span>
