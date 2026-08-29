@@ -2,7 +2,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { importInventory } from '../../shared/inventorySync.js';
 import { importArtPieces } from '../../shared/artPieceSync.js';
-import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 
 // Per-user Google Sheets import. Each authenticated user imports from their
 // own spreadsheet (saved on their account, or passed in). Orders are created
@@ -27,9 +26,7 @@ export default async function(req) {
     }
 
     const { accessToken } =
-      await base44.asServiceRole.connectors.getCurrentAppUserConnection(
-        GOOGLE_SHEETS_CONNECTOR_ID
-      );
+      await base44.asServiceRole.connectors.getConnection('googlesheets');
     const mode = reqBody?.mode || 'orders';
 
     if (mode === 'discover') {
