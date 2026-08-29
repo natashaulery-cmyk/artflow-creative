@@ -3,11 +3,11 @@
   "entry": "entry.ts",
   "automations": [
     {
-      "name": "Sync marketplace sales every 2 minutes",
+      "name": "Sync marketplace sales every 5 minutes",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
-      "cron_expression": "*/2 * * * *",
+      "cron_expression": "*/5 * * * *",
       "description": "Import completed Vinted, Depop, Etsy, Poshmark, and eBay sales from Gmail",
       "is_active": true
     }
