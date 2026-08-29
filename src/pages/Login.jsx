@@ -57,6 +57,21 @@ export default function Login() {
         </div>
       )}
 
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-12 font-medium mb-4"
+        onClick={handleGoogleLogin}
+      >
+        Sign in with Google
+      </Button>
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-px bg-border flex-1" />
+        <span className="text-xs text-muted-foreground">or use email and password</span>
+        <div className="h-px bg-border flex-1" />
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="login-email">Email</Label>
