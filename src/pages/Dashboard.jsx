@@ -30,7 +30,7 @@ export default function Dashboard() {
     const thisMonthSales = monthOrders.reduce((s, o) => s + (o.sale_total || 0), 0);
     const thisMonthProfit = monthOrders.reduce((s, o) => s + (o.estimated_profit || 0), 0);
     const thisMonthDeductions = monthExpenses.reduce(
-      (s, e) => s + (e.deductible_amount || 0),
+      (s, e) => s + (e.deductible_amount ?? ((e.amount || 0) * ((e.deductible_percent ?? 100) / 100))),
       0
     );
     const taxableProfit = thisMonthProfit - thisMonthDeductions;
@@ -47,7 +47,7 @@ export default function Dashboard() {
     const itemsSold = orders.reduce((s, o) => s + (o.quantity || 0), 0);
     const orderCosts = orders.reduce((s, o) => s + (o.total_cost || 0), 0);
     const allTimeProfit = orders.reduce((s, o) => s + (o.estimated_profit || 0), 0);
-    const allTimeDeductions = expenses.reduce((s, e) => s + (e.deductible_amount || 0), 0);
+    const allTimeDeductions = expenses.reduce((s, e) => s + (e.deductible_amount ?? ((e.amount || 0) * ((e.deductible_percent ?? 100) / 100))), 0);
     const taxableProfitAll = allTimeProfit - allTimeDeductions;
 
     return {
