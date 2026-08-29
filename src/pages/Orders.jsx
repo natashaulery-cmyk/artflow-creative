@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Search, Plus, RefreshCw } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
+import { useOrders } from "@/lib/useOrders";
 import { base44 } from "@/api/base44Client";
 import { formatMoney, formatDate, currentMonthKey, monthShort } from "@/lib/format";
 import { EmptyRow } from "@/components/Cards";
@@ -14,7 +15,7 @@ import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
 import { toast } from "sonner";
 
 export default function Orders() {
-  const { records: orders, reload: reloadOrders } = useEntity("Order", "-sale_date");
+  const { records: orders, reload: reloadOrders } = useOrders();
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
   const refresh = async () => { await reloadOrders(); };
   const { pathname } = useLocation();
