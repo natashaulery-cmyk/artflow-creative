@@ -171,7 +171,11 @@ export async function verifyEbayNotification(messageObject, signatureHeader) {
   const publicKey = formatPublicKey(keyResponse?.key || '');
   if (!publicKey) return false;
 
-  const verifier = createVerify('ssl3-sha1');
+  // Current Notification API signatures are ECC/ECDSA. eBay includes digest
+  // metadata in the decoded signature header/public-key response; use it instead
+  // of the obsolete RSA/SHA-1 pattern found in older SDK samples.
+  const digest = String(header?.digest || keyResponse?.digest || 'SHA256').replace(/[^A-Za-z0-9-]/g, '') || 'SHA256';
+  const verifier = createVerify(digest);
   verifier.update(JSON.stringify(messageObject));
   verifier.end();
   return verifier.verify(publicKey, signature, 'base64');
