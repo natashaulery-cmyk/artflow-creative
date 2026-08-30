@@ -40,32 +40,6 @@ export default function Orders() {
       const directSources = ["syncVintedPro", "syncDepopPartner", "syncEtsy"];
       const directMessages = [];
 
-      // FLUF can aggregate orders across the marketplaces a seller connected
-      // in the FLUF app. If it is connected, drain its paginated history first.
-      try {
-        let flufPass = 0;
-        let moreFluf = true;
-        let flufNew = 0;
-        while (moreFluf && flufPass < 12) {
-          const response = await fetch("/api/fluf?op=sync", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          });
-          const fluf = await response.json().catch(() => ({}));
-          if (response.status === 401 || response.status === 409) break;
-          if (!response.ok) throw new Error(fluf.error || "FLUF sync failed");
-          flufNew += Number(fluf.imported || 0);
-          moreFluf = Boolean(fluf.more_possible);
-          flufPass += 1;
-        }
-        if (flufPass > 0) directMessages.push(`FLUF synced${flufNew ? ` (${flufNew} new)` : ""}`);
-        await reloadOrders();
-      } catch (e) {
-        const message = e?.message || "";
-        if (message) directMessages.push(`FLUF: ${message}`);
-      }
 
       // Direct marketplace APIs are authoritative when available. Drain their
       // paginated history first so large shops can catch up in one button press.
@@ -126,6 +100,14 @@ export default function Orders() {
   }, [orders]);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
+  const displayProductName = (o) => {
+    const name = String(o.product_name || "").trim();
+    if (/^fluf sale$/i.test(name)) {
+      const platform = String(o.platform || "").trim();
+      return `${platform && !/^fluf(?:_|\s|$)/i.test(platform) ? platform : "Marketplace"} sale`;
+    }
+    return name || "Marketplace sale";
+  };
 
   const filtered = useMemo(() => {
     return orders
@@ -242,7 +224,7 @@ export default function Orders() {
           >
             <div className="flex items-start justify-between mb-2">
               <div className="min-w-0">
-                <p className="font-medium truncate">{o.product_name}</p>
+                <p className="font-medium truncate">{displayProductName(o)}</p>
                 <p className="text-xs text-muted-foreground">
                   <span className="text-foreground">{o.size}</span> · Qty <span className="text-foreground">{o.quantity}</span> · <span className="text-foreground">{formatDate(o.sale_date)}</span>
                 </p>
