@@ -26,6 +26,13 @@
         "type": "string"
       },
       "description": "Email accounts used to import marketplace sales for this business"
+    },
+    "expense_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Email accounts used to import business expenses for this business"
     }
   },
   "required": [
@@ -42,6 +49,9 @@
         },
         {
           "data.sales_emails": "{{user.email}}"
+        },
+        {
+          "data.expense_emails": "{{user.email}}"
         },
         {
           "data.primary_email": "{{user.email}}"
