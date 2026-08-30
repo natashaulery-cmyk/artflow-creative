@@ -138,7 +138,7 @@ export default function Expenses() {
       <section className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] space-y-3">
         <div>
           <p className="font-medium">Automatic art expense sync</p>
-          <p className="text-xs text-muted-foreground mt-1">Art Flow checks connected Gmail for paid art-business purchases and receipts, including supplies, printing, packaging, frames, equipment, photography gear, software, shipping, and other clearly business-related art expenses. You can still forward a receipt with the subject ArtFlow Expense for anything it misses.</p>
+          <p className="text-xs text-muted-foreground mt-1">Art Flow checks each connected inbox for paid art-business purchases and receipts, including supplies, printing, packaging, frames, equipment, photography gear, software, shipping, and other clearly business-related art expenses. After email sync, your Google Sheet backup fills in missing expenses without overwriting or double-counting existing records.</p>
         </div>
         <button
           onClick={importForwardedExpenses}
@@ -146,7 +146,7 @@ export default function Expenses() {
           className="w-full h-11 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
         >
           <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
-          {importingEmail ? "Checking art-business expenses…" : "Sync Art Expenses"}
+          {importingEmail ? "Checking all expense sources…" : "Sync All Art Expenses"}
         </button>
       </section>
 
