@@ -10,6 +10,10 @@
       "enum": [
         "gmail_sales",
         "gmail_expenses",
+        "outlook_sales",
+        "outlook_expenses",
+        "yahoo_sales",
+        "yahoo_expenses",
         "vinted_api",
         "depop_api",
         "etsy_api"
