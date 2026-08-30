@@ -26,7 +26,7 @@ export default function IndependentLogin() {
 
   const finish = () => {
     const params = new URLSearchParams(window.location.search);
-    const next = params.get("returnTo") || "/";
+    const next = params.get("returnTo") || "/new-auth-test";
     window.location.replace(next.startsWith("/") ? next : "/");
   };
 
@@ -59,7 +59,7 @@ export default function IndependentLogin() {
     try {
       const { error: socialError } = await artflowAuthClient.signIn.social({
         provider,
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}/new-auth-test`,
       });
       if (socialError) throw new Error(socialError.message || `Could not sign in with ${provider}.`);
     } catch (err) {
