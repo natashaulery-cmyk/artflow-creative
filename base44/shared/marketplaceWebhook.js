@@ -160,6 +160,7 @@ export async function upsertOrderLines(base44, connection, provider, orderId, sa
       size,
       unit_price: total / quantity,
       buyer: buyer || null,
+      source_url: String(line.source_url || line.url || '').trim() || null,
       archived: false,
       ...costs,
     };
