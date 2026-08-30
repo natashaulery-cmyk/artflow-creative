@@ -1,0 +1,4 @@
+{
+  "name": "setupSpreadsheetBackup",
+  "entry": "entry.ts"
+}
