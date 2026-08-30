@@ -33,10 +33,9 @@ export default async function(req) {
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: { Authorization: `Bearer ${gmail.accessToken}` } });
       if (res.ok) gmailEmail = String((await res.json())?.emailAddress || '').toLowerCase();
     } catch {}
-  } else if (!gmail.configured) {
-    // Temporary compatibility for the current single-account install. This is
-    // deliberately reported as legacy so future users are never told it is a
-    // private per-user connection.
+  } else if (!gmail.configured && user.role === 'admin') {
+    // Temporary compatibility for the owner's current single-account install.
+    // Ordinary users never receive or use the shared builder mailbox.
     try {
       const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: { Authorization: `Bearer ${accessToken}` } });
