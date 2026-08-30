@@ -93,6 +93,13 @@ export default function BusinessManager() {
       business.primary_email,
     ].map(normalizeEmail).filter(Boolean))
   );
+  const expenseEmails = Array.from(
+    new Set([
+      ...(business.expense_emails || []),
+      ...(business.sales_emails || []),
+      business.primary_email,
+    ].map(normalizeEmail).filter(Boolean))
+  );
 
   return (
     <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))] space-y-5">
@@ -168,12 +175,29 @@ export default function BusinessManager() {
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Marketplace sales from either connected Gmail account use this same business workspace.
+          Marketplace sales from connected Gmail, Outlook, or Yahoo inboxes use this same business workspace.
         </p>
       </div>
 
       <div>
-        <p className="text-sm font-semibold mb-2">Linked Google sign-ins</p>
+        <div className="flex items-center gap-2 mb-2">
+          <Link2 className="w-4 h-4 text-[hsl(var(--primary))]" />
+          <p className="text-sm font-semibold">Expense emails</p>
+        </div>
+        <div className="space-y-2">
+          {expenseEmails.map((email) => (
+            <div key={email} className="rounded-2xl bg-muted px-4 py-3 text-sm">
+              <p className="font-medium truncate">{email}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Receipts, invoices, supplies, software, equipment, shipping, and other qualifying business purchases can be pulled from these inboxes too.
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold mb-2">Linked sign-ins</p>
         <div className="space-y-2 mb-3">
           {members.map((email) => (
             <div
@@ -194,7 +218,7 @@ export default function BusinessManager() {
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addLinkedEmail()}
-            placeholder="Link another Google email"
+            placeholder="Link another sign-in email"
             inputMode="email"
             autoCapitalize="none"
             className="form-input flex-1"
@@ -203,13 +227,13 @@ export default function BusinessManager() {
             onClick={addLinkedEmail}
             disabled={saving || !newEmail.trim()}
             className="w-14 h-14 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center shrink-0 disabled:opacity-50"
-            aria-label="Link Google email"
+            aria-label="Link sign-in email"
           >
             <Plus className="w-5 h-5" />
           </button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Linked sign-ins see the same business data. Sales emails are listed separately above.
+          Linked sign-ins see the same business data. Connected sales and expense inboxes are listed separately above.
         </p>
       </div>
     </section>
