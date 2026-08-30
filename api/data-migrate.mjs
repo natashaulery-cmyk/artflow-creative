@@ -1,5 +1,6 @@
 import pg from 'pg';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -60,6 +61,19 @@ async function readJson(req) {
   let text = '';
   for await (const chunk of req) text += chunk;
   return text ? JSON.parse(text) : {};
+}
+
+function readBundledExport(token) {
+  const packed = fs.readFileSync(new URL('./_base44-export.enc', import.meta.url));
+  if (packed.length < 29) throw new Error('Encrypted migration bundle is invalid');
+  const iv = packed.subarray(0, 12);
+  const tag = packed.subarray(12, 28);
+  const encrypted = packed.subarray(28);
+  const key = crypto.createHash('sha256').update(token).digest();
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return JSON.parse(plain.toString('utf8'));
 }
 
 async function bulkUpsert(client, table, columns, rows) {
@@ -405,6 +419,21 @@ export default async function handler(req, res) {
       if (!ALLOWED_ENTITIES.has(body.entity) || !Array.isArray(body.records)) return res.status(400).json({ error: 'Invalid batch' });
       await loadEntity(client, body.entity, body.records);
       return res.status(200).json({ ok: true, entity: body.entity, loaded: body.records.length });
+    }
+    if (body.action === 'load-bundled') {
+      if (!ALLOWED_ENTITIES.has(body.entity)) return res.status(400).json({ error: 'Invalid entity' });
+      const doc = readBundledExport(expectedToken);
+      const all = doc.entities?.[body.entity] || [];
+      const start = Math.max(0, Number(body.start || 0));
+      const limit = Math.max(1, Math.min(1200, Number(body.limit || 900)));
+      const selected = all.slice(start, start + limit);
+      let loaded = 0;
+      for (let i = 0; i < selected.length; i += 150) {
+        const batch = selected.slice(i, i + 150);
+        await loadEntity(client, body.entity, batch);
+        loaded += batch.length;
+      }
+      return res.status(200).json({ ok: true, entity: body.entity, start, loaded, total: all.length, next: start + loaded < all.length ? start + loaded : null });
     }
     if (body.action === 'verify') {
       const result = await verify(client, body);
