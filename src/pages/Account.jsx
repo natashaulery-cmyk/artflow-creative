@@ -9,6 +9,7 @@ import BusinessManager from "@/components/BusinessManager";
 import ThemeSettings from "@/components/ThemeSettings";
 import EtsyConnectionCard from "@/components/EtsyConnectionCard";
 import VintedConnectionCard from "@/components/VintedConnectionCard";
+import EmailConnectionsCard from "@/components/EmailConnectionsCard";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -52,6 +53,8 @@ export default function Account() {
       </section>
 
       <BusinessManager />
+
+      <EmailConnectionsCard />
 
       <EtsyConnectionCard />
 
