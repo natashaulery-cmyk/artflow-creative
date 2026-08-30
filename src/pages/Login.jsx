@@ -29,13 +29,6 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    setError("");
-    import("@/api/base44Client")
-      .then(({ base44 }) => base44.auth.loginWithProvider("google", `${window.location.origin}${returnTo}`))
-      .catch((err) => setError(err?.message || "Google sign-in is unavailable right now."));
-  };
-
   return (
     <AuthLayout
       icon={LogIn}
@@ -43,7 +36,7 @@ export default function Login() {
       subtitle="Log in to your Art Flow Creative account"
       footer={
         <>
-          Use Google if that is how you originally created your Art Flow Creative account.
+          Previously used Google? Use Forgot password with the same email to set a password for this Vercel version.
         </>
       }
     >
@@ -52,21 +45,6 @@ export default function Login() {
           {error}
         </div>
       )}
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-12 font-medium mb-4"
-        onClick={handleGoogleLogin}
-      >
-        Sign in with Google
-      </Button>
-
-      <div className="flex items-center gap-3 mb-4">
-        <div className="h-px bg-border flex-1" />
-        <span className="text-xs text-muted-foreground">or use email and password</span>
-        <div className="h-px bg-border flex-1" />
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
