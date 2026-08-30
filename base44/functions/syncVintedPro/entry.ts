@@ -118,6 +118,16 @@ async function mapLimit(items, limit, worker) {
 
 export default async function(req) {
   const base44 = createClientFromRequest(req);
+  const signedInUser = await base44.auth.me().catch(() => null);
+  if (!signedInUser?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (signedInUser.role !== 'admin') {
+    return Response.json({
+      available: false,
+      connected: false,
+      more_possible: false,
+      message: 'Vinted sales sync from your own connected email inbox. Direct Vinted Pro access is only used for an approved seller account.',
+    });
+  }
   const credentials = getCredentials();
   if (!credentials.accessKey || !credentials.signingKey) {
     return Response.json({
