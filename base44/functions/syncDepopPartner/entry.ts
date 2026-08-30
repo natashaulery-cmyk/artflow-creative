@@ -179,6 +179,7 @@ export default async function(req) {
         const inv = inventoryCosts.find((entry) => entry.size === size);
         const costs = calculateOrderCosts({ quantity: 1, size, unit_price: price }, inv);
         const buyer = order.buyer?.username || order.buyer?.name || order.shipping_address?.name || order.address?.name || '';
+        const sourceUrl = String(item?.url || item?.listing_url || item?.product_url || '').trim() || null;
 
         const data = {
           business_id: businessId,
@@ -194,6 +195,7 @@ export default async function(req) {
           unit_price: price,
           sale_total: price,
           buyer: buyer || null,
+          source_url: sourceUrl,
           archived: false,
           ...costs,
         };
