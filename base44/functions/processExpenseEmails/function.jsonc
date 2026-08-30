@@ -8,8 +8,8 @@
       "schedule_mode": "recurring",
       "schedule_type": "cron",
       "cron_expression": "*/5 * * * *",
-      "description": "Import Gmail receipts and bills marked ArtFlow Expense",
-      "is_active": false
+      "description": "Import business receipts and bills from connected expense inboxes",
+      "is_active": true
     }
   ]
 }
