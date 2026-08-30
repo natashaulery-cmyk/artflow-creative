@@ -31,6 +31,15 @@ export default async function(req) {
     const verificationToken = String(connection.verification_token || randomToken(20));
     const endpoint = functionUrl('ebayWebhook', callbackKey);
 
+    // eBay immediately sends a GET challenge while createDestination is in flight.
+    // Persist these values first so ebayWebhook can answer that challenge.
+    await base44.asServiceRole.entities.EbayConnection.update(connection.id, {
+      callback_key: callbackKey,
+      verification_token: verificationToken,
+      last_error: '',
+    });
+    connection = { ...connection, callback_key: callbackKey, verification_token: verificationToken };
+
     let destinationsPayload = await ebayJson('/commerce/notification/v1/destination?limit=100', connection.access_token);
     let destinations = listFrom(destinationsPayload, 'destinations');
     let destination = destinations.find((d) => String(d?.deliveryConfig?.endpoint || '') === endpoint);
@@ -57,9 +66,10 @@ export default async function(req) {
       topic = listFrom(topicsPayload, 'topics').find((t) => String(t?.topicId || t?.topic || '') === 'ORDER_CONFIRMATION') || null;
     }
     const supported = Array.isArray(topic?.supportedPayloads) ? topic.supportedPayloads[0] : null;
+    const supportedFormat = Array.isArray(supported?.format) ? supported.format[0] : supported?.format;
     const subscriptionPayload = {
       deliveryProtocol: supported?.deliveryProtocol || 'HTTPS',
-      format: supported?.format || 'JSON',
+      format: supportedFormat || 'JSON',
       schemaVersion: supported?.schemaVersion || '1.0',
     };
 
