@@ -213,7 +213,7 @@ export default function Orders() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {Array.from(new Set(["All", ...PLATFORMS, ...orders.map((o) => displayPlatform(o.platform)), "Bundles"])).map((p) => (
+        {["All", ...PLATFORMS, "Bundles"].map((p) => (
           <button
             key={p}
             onClick={() => setPlatformFilter(p)}
