@@ -250,7 +250,10 @@ export default async function(req) {
   let workspace = { ownerId: null, businessId: null, email: null };
   try {
     base44 = createClientFromRequest(req);
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
+    const gmailUserConnectorId = String(Deno.env.get('GMAIL_USER_CONNECTOR_ID') || '').trim();
+    const { accessToken } = gmailUserConnectorId
+      ? await base44.asServiceRole.connectors.getCurrentAppUserConnection(gmailUserConnectorId)
+      : await base44.asServiceRole.connectors.getConnection('gmail');
     const headers = { Authorization: `Bearer ${accessToken}` };
 
     let connectedEmail = '';
