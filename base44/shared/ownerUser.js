@@ -19,12 +19,13 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
   const businesses = await base44.asServiceRole.entities.Business.list('name', 500);
   const activeId = user.active_business_id || user.data?.active_business_id || null;
 
-  // Prefer a business that explicitly lists this email as a member/sales email.
-  // This keeps linked Gmail accounts in the same workspace even if an older
-  // duplicate user record points at a stray/empty active_business_id.
+  // Prefer a business that explicitly lists this email as a member, sales inbox,
+  // or expense inbox. This keeps multiple connected mail providers in the same
+  // workspace even if an older duplicate user record points elsewhere.
   let business = email
     ? businesses.find((b) =>
       (b.sales_emails || []).some((member) => lower(member) === email)
+      || (b.expense_emails || []).some((member) => lower(member) === email)
       || (b.member_emails || []).some((member) => lower(member) === email)
     )
     : null;
@@ -37,6 +38,7 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
       primary_email: user.email || emailHint || null,
       member_emails: user.email ? [user.email] : [],
       sales_emails: user.email ? [user.email] : [],
+      expense_emails: user.email ? [user.email] : [],
       created_by_id: user.id,
     });
   } else if (email && !(business.member_emails || []).some((member) => lower(member) === email)) {
@@ -51,6 +53,7 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
   const accessEmails = Array.from(new Set([
     ...(business?.member_emails || []),
     ...(business?.sales_emails || []),
+    ...(business?.expense_emails || []),
     business?.primary_email,
     user.email,
   ].map(lower).filter(Boolean)));
