@@ -43,6 +43,10 @@
     "source_email_id": {
       "type": "string"
     },
+    "source_url": {
+      "type": "string",
+      "description": "Original marketplace listing/order URL when available"
+    },
     "base_item_cost": {
       "type": "number"
     },
