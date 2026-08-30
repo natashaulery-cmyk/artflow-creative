@@ -10,7 +10,7 @@ const num = (value, fallback = 0) => {
   const n = Number(String(value).replace(/[$,%]/g, '').trim());
   return Number.isFinite(n) ? n : fallback;
 };
-const isoDate = (value) => {
+const isoDate = (value, dayFirst = false) => {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value).trim())) {
     const serial = Number(value);
@@ -20,7 +20,15 @@ const isoDate = (value) => {
   }
   const s = String(value).trim();
   let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+  if (m) {
+    const first = Number(m[1]);
+    const second = Number(m[2]);
+    const useDayFirst = first > 12 || (second <= 12 && dayFirst);
+    const day = useDayFirst ? first : second;
+    const month = useDayFirst ? second : first;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${m[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
   m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
   const d = new Date(s);
@@ -92,7 +100,7 @@ function parseRows(rows, sheetName) {
   const parsed = [];
   for (let rowIndex = headerIndex + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] || [];
-    const date = isoDate(idx.date >= 0 ? row[idx.date] : null);
+    const date = isoDate(idx.date >= 0 ? row[idx.date] : null, sheetName === '💸 Expenditures / Materials');
     const description = String(idx.description >= 0 ? row[idx.description] || '' : '').trim();
     const amount = num(idx.amount >= 0 ? row[idx.amount] : null, 0);
     if (!date || !description || !(amount > 0)) continue;
