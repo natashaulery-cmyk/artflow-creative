@@ -5,7 +5,6 @@ export const validDate = (value = '') => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 export const platformFromSender = (sender = '') =>
   /etsy/i.test(sender) ? 'Etsy' :
-  /poshmark/i.test(sender) ? 'Poshmark' :
   /ebay/i.test(sender) ? 'eBay' :
   /depop/i.test(sender) ? 'Depop' :
   /vinted/i.test(sender) ? 'Vinted' : '';
@@ -62,24 +61,6 @@ export function parseKnownSale({ sender = '', subject = '', body = '', fallbackD
       const productName = itemNames.length > 1 ? `Bundle ${itemNames.length} items: ${itemNames.join(' + ')}` : itemNames[0] || 'Depop sale';
       if (saleTotal && saleTotal > 0) {
         return { handled: true, order: { is_sale: true, platform, order_id: '', product_name: productName, quantity, size: inferSize(productName), sale_total: saleTotal, buyer: buyerMatch?.[1]?.trim() || '', sale_date: fallbackDate } };
-      }
-    }
-    return { handled: true, order: { is_sale: false, platform } };
-  }
-
-  if (platform === 'Poshmark') {
-    if (/just sold to @[^\s]+ on poshmark!/i.test(subject) || /great news\s*-\s*you just sold/i.test(body)) {
-      const subjectMatch = subject.match(/^"([^"]+)"\s+just sold to @([^\s]+)\s+on Poshmark!/i);
-      const bodyProductMatch = body.match(/you just sold\s+"([^"]+)"\s+on Poshmark/i);
-      const orderIdMatch = body.match(/\nOrder ID\s*\n+([A-Za-z0-9_-]+)/i);
-      const buyerNameMatch = body.match(/\nBuyer\s*\n+([^\n]+)\n+@/i);
-      const priceSectionMatch = body.match(/\nItem\s*\n+Price\s*\n+([\s\S]*?)\nYour Earnings/i);
-      const priceLines = (priceSectionMatch?.[1] || '').split(/\n+/).map((part) => part.trim()).filter(Boolean);
-      const priceText = [...priceLines].reverse().find((part) => /^\$[\d,.]+$/.test(part)) || '';
-      const saleTotal = moneyValue(priceText);
-      const productName = subjectMatch?.[1] || bodyProductMatch?.[1] || '';
-      if (productName && saleTotal && saleTotal > 0) {
-        return { handled: true, order: { is_sale: true, platform, order_id: orderIdMatch?.[1] || '', product_name: productName, quantity: 1, size: inferSize(productName), sale_total: saleTotal, buyer: buyerNameMatch?.[1]?.trim() || subjectMatch?.[2] || '', sale_date: fallbackDate } };
       }
     }
     return { handled: true, order: { is_sale: false, platform } };
