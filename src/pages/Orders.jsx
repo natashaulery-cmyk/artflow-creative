@@ -11,7 +11,7 @@ import { useModalRoute } from "@/hooks/useModalRoute";
 import { useLocation } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import SyncStatus from "@/components/SyncStatus";
-import { PLATFORMS, PLATFORM_TONE } from "@/lib/platforms";
+import { PLATFORMS, PLATFORM_TONE, displayPlatform, displayProductName } from "@/lib/platforms";
 import { toast } from "sonner";
 
 export default function Orders() {
@@ -100,21 +100,12 @@ export default function Orders() {
   }, [orders]);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
-  const displayProductName = (o) => {
-    const name = String(o.product_name || "").trim();
-    if (/^fluf sale$/i.test(name)) {
-      const platform = String(o.platform || "").trim();
-      return `${platform && !/^fluf(?:_|\s|$)/i.test(platform) ? platform : "Marketplace"} sale`;
-    }
-    return name || "Marketplace sale";
-  };
-
   const filtered = useMemo(() => {
     return orders
       .filter((o) => {
         if (platformFilter === "Bundles") {
           if (!isBundle(o)) return false;
-        } else if (platformFilter !== "All" && o.platform !== platformFilter) return false;
+        } else if (platformFilter !== "All" && displayPlatform(o.platform) !== platformFilter) return false;
         if (monthFilter !== "All" && (o.sale_date || "").slice(0, 7) !== monthFilter) return false;
         if (search) {
           const q = search.toLowerCase();
@@ -200,7 +191,7 @@ export default function Orders() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {Array.from(new Set(["All", ...PLATFORMS, ...orders.map((o) => o.platform).filter(Boolean), "Bundles"])).map((p) => (
+        {Array.from(new Set(["All", ...PLATFORMS, ...orders.map((o) => displayPlatform(o.platform)), "Bundles"])).map((p) => (
           <button
             key={p}
             onClick={() => setPlatformFilter(p)}
@@ -231,10 +222,10 @@ export default function Orders() {
               </div>
               <span
                 className={`shrink-0 ml-2 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  PLATFORM_TONE[o.platform] || "bg-muted text-muted-foreground"
+                  PLATFORM_TONE[displayPlatform(o.platform)] || "bg-muted text-muted-foreground"
                 }`}
               >
-                {o.platform}
+                {displayPlatform(o.platform)}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-[hsl(var(--border))]">
