@@ -9,18 +9,32 @@ import {
 
 const ORDER_EVENTS = new Set(['v1:order.new', 'v1:order.update', 'v1:order.refund']);
 
+function refundItemAmount(order = {}) {
+  return money(
+    order?.refund_summary?.breakdown?.refunded_to_buyer?.item_refund_amount
+    ?? order?.refund_summary?.buyer_refund_amount
+    ?? 0
+  );
+}
+
 function toLines(order = {}) {
   const items = Array.isArray(order?.line_items)
     ? order.line_items
     : Array.isArray(order?.items)
       ? order.items
       : [];
-  return items.map((item, index) => ({
+  const raw = items.map((item, index) => ({
     lineId: String(item?.purchase_item_id || item?.id || item?.product_id || item?.sku || index),
     title: String(item?.description || item?.title || item?.name || 'Depop sale').trim() || 'Depop sale',
     quantity: Math.max(1, Number(item?.quantity) || 1),
     total: money(item?.sold_price || item?.price || item?.original_price),
   })).filter((line) => Number(line.total) > 0);
+
+  const originalTotal = raw.reduce((sum, line) => sum + Number(line.total || 0), 0);
+  const refunded = Math.max(0, refundItemAmount(order));
+  if (!(originalTotal > 0) || !(refunded > 0) || refunded >= originalTotal) return raw;
+  const keepRatio = Math.max(0, (originalTotal - refunded) / originalTotal);
+  return raw.map((line) => ({ ...line, total: +(Number(line.total || 0) * keepRatio).toFixed(2) }));
 }
 
 export default async function(req) {
@@ -70,16 +84,18 @@ export default async function(req) {
     const order = await depopRequest(`/api/v1/orders/${encodeURIComponent(purchaseId)}/`);
     const status = String(order?.status || payload?.data?.status || '').toUpperCase();
     let result = { created: 0, updated: 0, archived: 0 };
+    const itemTotal = (Array.isArray(order?.line_items) ? order.line_items : [])
+      .reduce((sum, item) => sum + money(item?.sold_price || item?.price || item?.original_price), 0);
+    const refundedItems = refundItemAmount(order);
+    const fullyRefunded = status === 'REFUNDED' && itemTotal > 0 && refundedItems >= itemTotal - 0.005;
 
-    if (eventType === 'v1:order.refund' && status === 'REFUNDED') {
-      result.archived = await archiveProviderOrder(base44, connection, 'Depop', purchaseId, 'depop_webhook_refunded');
-    } else if (status === 'REFUNDED') {
+    if (fullyRefunded) {
       result.archived = await archiveProviderOrder(base44, connection, 'Depop', purchaseId, 'depop_webhook_refunded');
     } else {
       const saleDate = String(order?.created_at || payload?.created_at || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
       const buyer = order?.buyer_address?.name || order?.buyer?.username || order?.buyer?.name || '';
       const lines = toLines(order);
-      result = { ...result, ...(await upsertOrderLines(base44, connection, 'Depop', purchaseId, saleDate, buyer, lines, 'depop_webhook')) };
+      result = { ...result, ...(await upsertOrderLines(base44, connection, 'Depop', purchaseId, saleDate, buyer, lines, refundedItems > 0 ? 'depop_webhook_partial_refund' : 'depop_webhook')) };
     }
 
     await base44.asServiceRole.entities.MarketplaceWebhook.update(hook.id, {
