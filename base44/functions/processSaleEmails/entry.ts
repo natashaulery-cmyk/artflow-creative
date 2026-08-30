@@ -33,9 +33,9 @@ const validDate = (value = '') => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 const platformFromSender = (sender = '') =>
   /etsy/i.test(sender) ? 'Etsy' :
-  /poshmark/i.test(sender) ? 'Poshmark' :
   /ebay/i.test(sender) ? 'eBay' :
-  /depop/i.test(sender) ? 'Depop' : 'Vinted';
+  /depop/i.test(sender) ? 'Depop' :
+  /vinted/i.test(sender) ? 'Vinted' : '';
 
 const moneyValue = (value = '') => {
   const parsed = Number(String(value).replace(/[$,\s]/g, ''));
@@ -299,8 +299,8 @@ export default async function(req) {
     // Keep a 7-day overlap so delayed emails and parser retries are still picked up.
     const caughtUp = !!priorState && Number(priorState.last_remaining || 0) === 0;
     const query = caughtUp
-      ? 'newer_than:7d {from:vinted from:depop from:etsy from:poshmark from:ebay}'
-      : 'after:2026/01/01 {from:vinted from:depop from:etsy from:poshmark from:ebay}';
+      ? 'newer_than:7d {from:vinted from:depop from:etsy from:ebay}'
+      : 'after:2026/01/01 {from:vinted from:depop from:etsy from:ebay}';
     const allMessageIds = [];
     let pageToken = '';
     do {
@@ -407,7 +407,7 @@ export default async function(req) {
     );
     // Do not hammer a paid integration after Base44 has already told us its AI
     // quota is exhausted. Recently quota-failed messages cool down for six hours;
-    // deterministic Vinted, Depop, and Poshmark parsing can keep moving around them.
+    // deterministic Vinted and Depop parsing can keep moving around them.
     const quotaCooldownMs = 6 * 60 * 60 * 1000;
     const recentQuotaErrorIds = new Set(
       importHistory
@@ -486,7 +486,7 @@ export default async function(req) {
             'Decide whether this marketplace email proves the inbox owner completed a seller sale. Shipping-label and bundle emails count when they contain the sold item and buyer-paid item price. ' +
             'Ignore offers, likes, messages, listing notices, cancellations, refunds, payouts, fees, purchases made by the inbox owner, and emails without a clear item price. Never invent a value.\n' +
             `Sender: ${sender}\nSubject: ${subject}\nReceived date: ${fallbackDate}\nBody: ${body.slice(0, 18000)}\n` +
-            'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, sale_total (the full amount paid for the item or bundle, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD). Do not multiply bundle totals by quantity.';
+            'Return JSON with is_sale, platform (Vinted, Depop, Etsy, or eBay), order_id, product_name, quantity, size, sale_total (the full amount paid for the item or bundle, excluding shipping and tax), buyer, and sale_date (YYYY-MM-DD). Do not multiply bundle totals by quantity.';
 
           const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
             prompt,
@@ -510,7 +510,7 @@ export default async function(req) {
         }
         const saleTotal = Number(order.sale_total);
         const quantity = Math.max(1, Number(order.quantity) || 1);
-        const platform = ['Vinted', 'Depop', 'Etsy', 'Poshmark', 'eBay'].includes(order.platform)
+        const platform = ['Vinted', 'Depop', 'Etsy', 'eBay'].includes(order.platform)
           ? order.platform : inferredPlatform;
 
         if (!order.is_sale || !order.product_name || !Number.isFinite(saleTotal) || saleTotal <= 0) {
