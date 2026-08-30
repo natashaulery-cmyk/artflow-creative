@@ -37,6 +37,9 @@
     "oauth_state": {
       "type": "string"
     },
+    "callback_key": {
+      "type": "string"
+    },
     "notification_destination_id": {
       "type": "string"
     },
