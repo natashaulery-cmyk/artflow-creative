@@ -224,15 +224,19 @@ export const AuthProvider = ({ children }) => {
     setAuthError({ type: 'auth_required', message: 'Authentication required' });
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthChecked(true);
     setAuthError(null);
+    setAuthBackend(null);
 
-    // Do not wait on the provider logout handshake. A broken custom Google OAuth
-    // config can hang there and leave the screen blank. A full reload after
-    // clearing the locally cached Base44 tokens is enough to end this app session.
+    try {
+      await artflowAuthClient.signOut();
+    } catch {
+      // Continue clearing the legacy local session even if server sign-out fails.
+    }
+
     try {
       localStorage.removeItem('base44_access_token');
       localStorage.removeItem('token');
@@ -244,8 +248,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.replace(`/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   };
 
   return (
