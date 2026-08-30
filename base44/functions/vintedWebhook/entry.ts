@@ -48,6 +48,7 @@ export default async function(req) {
         title: String(item?.title || 'Vinted sale'),
         quantity: 1,
         total: item?.price,
+        source_url: String(item?.url || item?.item_url || item?.listing_url || '').trim(),
       }));
       const saved = await upsertOrderLines(base44, connection, 'Vinted', orderId, saleDate, buyer, lines, 'vinted_webhook');
       result = { ...result, ...saved };
