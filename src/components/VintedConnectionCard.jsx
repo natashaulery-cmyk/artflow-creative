@@ -34,9 +34,11 @@ export default function VintedConnectionCard() {
         return;
       }
 
-      setStatus("connected");
-      setMessage(data.message || "Vinted Pro is connected and up to date.");
-      toast.success(data.message || "Vinted synced");
+      const hook = await base44.functions.invoke("setupVintedWebhook", {}).catch(() => null);
+      const hookData = hook?.data || {};
+      setStatus(hookData.connected ? "connected" : "setup");
+      setMessage(hookData.message || data.message || "Vinted Pro is connected and up to date.");
+      toast.success(hookData.message || data.message || "Vinted synced");
     } catch (error) {
       const text = error?.response?.data?.error || error?.message || "Vinted sync failed";
       setStatus("error");
