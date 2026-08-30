@@ -156,7 +156,7 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
 
     // The new Art Flow account system is authoritative. It is backed by Neon
-    // through Better Auth and is the same session used by the FLUF API routes.
+    // through Better Auth and is used by Art Flow's server APIs.
     try {
       const sessionResult = await artflowAuthClient.getSession();
       const session = sessionResult?.data || sessionResult;
