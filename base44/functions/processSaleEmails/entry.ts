@@ -5,7 +5,7 @@ import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 150;
 const LEGACY_MIGRATION_BATCH = 150;
-const PARSER_VERSION = 2;
+const PARSER_VERSION = 3;
 
 const decode = (value = '') => {
   try {
@@ -137,6 +137,56 @@ const parseKnownSale = ({ sender = '', subject = '', body = '', fallbackDate = '
     // Shipping reminders, delivery notices, marketing, and other Depop emails
     // are not separate sales.
     return { handled: true, order: { is_sale: false, platform: 'Depop' } };
+  }
+
+  if (platform === 'Poshmark') {
+    // Poshmark's seller confirmation includes everything needed to create the
+    // order, so parse it locally instead of spending an AI integration call.
+    if (/just sold to @[^\s]+ on poshmark!/i.test(subject) || /great news\s*-\s*you just sold/i.test(body)) {
+      const subjectMatch = subject.match(/^"([^"]+)"\s+just sold to @([^\s]+)\s+on Poshmark!/i);
+      const bodyProductMatch = body.match(/you just sold\s+"([^"]+)"\s+on Poshmark/i);
+      const orderIdMatch = body.match(/\nOrder ID\s*\n+([A-Za-z0-9_-]+)/i);
+      const buyerNameMatch = body.match(/\nBuyer\s*\n+([^\n]+)\n+@/i);
+      const priceSectionMatch = body.match(/\nItem\s*\n+Price\s*\n+([\s\S]*?)\nYour Earnings/i);
+      const priceLines = (priceSectionMatch?.[1] || '')
+        .split(/\n+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      const priceText = [...priceLines].reverse().find((part) => /^\$[\d,.]+$/.test(part)) || '';
+      const saleTotal = moneyValue(priceText);
+      const productName = subjectMatch?.[1] || bodyProductMatch?.[1] || '';
+      const dateMatch = body.match(/\nOrder Date\s*\n+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+      let saleDate = fallbackDate;
+      if (dateMatch?.[1]) {
+        const parsedDate = new Date(dateMatch[1]);
+        if (!Number.isNaN(parsedDate.getTime())) saleDate = parsedDate.toISOString().slice(0, 10);
+      }
+
+      if (productName && saleTotal && saleTotal > 0) {
+        return {
+          handled: true,
+          order: {
+            is_sale: true,
+            platform: 'Poshmark',
+            order_id: orderIdMatch?.[1] || '',
+            product_name: productName,
+            quantity: 1,
+            size: inferSize(productName),
+            sale_total: saleTotal,
+            buyer: buyerNameMatch?.[1]?.trim() || subjectMatch?.[2] || '',
+            sale_date: saleDate,
+          },
+        };
+      }
+    }
+
+    // Offers, deposited-earnings notices, promotions, likes, and shipping
+    // follow-ups are not new sales and should never consume AI quota.
+    return { handled: true, order: { is_sale: false, platform: 'Poshmark' } };
+  }
+
+  if (platform === 'Etsy' && /did you recently sign into etsy|seller app is now live|password|security|verification|prohibited items policy/i.test(subject)) {
+    return { handled: true, order: { is_sale: false, platform: 'Etsy' } };
   }
 
   return { handled: false, order: null };
@@ -348,8 +398,25 @@ export default async function(req) {
         )
         .map((item) => item.message_id)
     );
+    // Do not hammer a paid integration after Base44 has already told us its AI
+    // quota is exhausted. Recently quota-failed messages cool down for six hours;
+    // deterministic Vinted, Depop, and Poshmark parsing can keep moving around them.
+    const quotaCooldownMs = 6 * 60 * 60 * 1000;
+    const recentQuotaErrorIds = new Set(
+      importHistory
+        .filter((item) =>
+          item.import_type === 'sale' &&
+          item.status === 'error' &&
+          (!item.business_id || item.business_id === businessId) &&
+          /limit of integrations|rate limit/i.test(String(item.details || '')) &&
+          Date.now() - new Date(item.updated_date || item.created_date || 0).getTime() < quotaCooldownMs
+        )
+        .map((item) => item.message_id)
+    );
     const seenEmailIds = new Set(targetOrders.map((o) => o.source_email_id).filter(Boolean));
-    const unseenIds = allMessageIds.filter((id) => !completedEmailIds.has(id) && !seenEmailIds.has(id));
+    const unseenIds = allMessageIds.filter((id) =>
+      !completedEmailIds.has(id) && !seenEmailIds.has(id) && !recentQuotaErrorIds.has(id)
+    );
     // Gmail lists newest messages first. Never reverse this list: doing so makes a
     // new sale wait behind hundreds of historical emails during a backfill.
     const batch = unseenIds.slice(0, BATCH_SIZE);
