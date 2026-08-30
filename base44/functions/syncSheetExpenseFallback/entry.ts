@@ -10,7 +10,7 @@ const num = (value, fallback = 0) => {
   const n = Number(String(value).replace(/[$,%]/g, '').trim());
   return Number.isFinite(n) ? n : fallback;
 };
-const isoDate = (value, dayFirst = false) => {
+const isoDate = (value) => {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value).trim())) {
     const serial = Number(value);
@@ -20,15 +20,7 @@ const isoDate = (value, dayFirst = false) => {
   }
   const s = String(value).trim();
   let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    const first = Number(m[1]);
-    const second = Number(m[2]);
-    const useDayFirst = first > 12 || (second <= 12 && dayFirst);
-    const day = useDayFirst ? first : second;
-    const month = useDayFirst ? second : first;
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return `${m[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  }
+  if (m) return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
   m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
   const d = new Date(s);
@@ -100,7 +92,7 @@ function parseRows(rows, sheetName) {
   const parsed = [];
   for (let rowIndex = headerIndex + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] || [];
-    const date = isoDate(idx.date >= 0 ? row[idx.date] : null, sheetName === '💸 Expenditures / Materials');
+    const date = isoDate(idx.date >= 0 ? row[idx.date] : null);
     const description = String(idx.description >= 0 ? row[idx.description] || '' : '').trim();
     const amount = num(idx.amount >= 0 ? row[idx.amount] : null, 0);
     if (!date || !description || !(amount > 0)) continue;
@@ -147,7 +139,13 @@ export default async function(req) {
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const spreadsheetId = String(body?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id || '').trim();
+    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
+    const { ownerId, businessId, accessEmails = [] } = workspace;
+    if (!ownerId || !businessId) return Response.json({ error: 'No business workspace found.' }, { status: 400 });
+
+    const businesses = await base44.asServiceRole.entities.Business.list('-updated_date', 500);
+    const business = businesses.find((item) => item.id === businessId);
+    const spreadsheetId = String(body?.spreadsheetId || business?.spreadsheet_id || user.spreadsheet_id || user.data?.spreadsheet_id || '').trim();
     if (!spreadsheetId) {
       return Response.json({ available: true, connected: false, needs_sheet: true, message: 'Add your Google Sheet in Account to use spreadsheet expense backup.' });
     }
@@ -158,10 +156,6 @@ export default async function(req) {
     } catch {
       return Response.json({ available: true, connected: false, needs_connection: true, message: 'Connect Google Sheets in Account to use spreadsheet expense backup.' });
     }
-
-    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
-    const { ownerId, businessId, accessEmails = [] } = workspace;
-    if (!ownerId || !businessId) return Response.json({ error: 'No business workspace found.' }, { status: 400 });
 
     const [sheetRows, allExpenses] = await Promise.all([
       Promise.all(SHEETS.map(async (sheetName) => ({ sheetName, rows: await fetchRows(spreadsheetId, sheetName, accessToken) }))),
