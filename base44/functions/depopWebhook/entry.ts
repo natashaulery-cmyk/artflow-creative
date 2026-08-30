@@ -28,6 +28,7 @@ function toLines(order = {}) {
     title: String(item?.description || item?.title || item?.name || 'Depop sale').trim() || 'Depop sale',
     quantity: Math.max(1, Number(item?.quantity) || 1),
     total: money(item?.sold_price || item?.price || item?.original_price),
+    source_url: String(item?.url || item?.listing_url || item?.product_url || '').trim(),
   })).filter((line) => Number(line.total) > 0);
 
   const originalTotal = raw.reduce((sum, line) => sum + Number(line.total || 0), 0);
