@@ -134,7 +134,19 @@ export default async function(req) {
       const saleDate = String(order.created_at || order.date || '').slice(0, 10);
       if (!saleDate || saleDate < START_DATE) continue;
 
-      const rawItems = Array.isArray(order.items) ? order.items : Array.isArray(order.products) ? order.products : [];
+      // Depop keeps refunded orders in the Orders API. Exclude fully refunded
+      // purchases from live sales totals during every reconciliation pass so a
+      // missed webhook cannot leave a refunded sale counted forever.
+      if (String(order.status || '').toUpperCase() === 'REFUNDED') {
+        for (const existing of targetOrders.filter((o) => o.platform === 'Depop' && String(o.order_id || '') === purchaseId && !o.archived)) {
+          await base44.asServiceRole.entities.Order.update(existing.id, { archived: true, sync_source: 'depop_api_refunded' });
+          existing.archived = true;
+          updated++;
+        }
+        continue;
+      }
+
+      const rawItems = Array.isArray(order.line_items) ? order.line_items : Array.isArray(order.items) ? order.items : Array.isArray(order.products) ? order.products : [];
       const fallbackTitle = String(order.description || order.product_name || 'Depop sale');
       const fallbackPrice = money(order.sold_price || order.subtotal || order.total || order.amount);
       const items = rawItems.length ? rawItems : [{ description: fallbackTitle, sold_price: fallbackPrice }];
