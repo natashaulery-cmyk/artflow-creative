@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npx vite build --config vite.single.config.js",
+  "outputDirectory": "dist-single",
+  "functions": {
+    "api/**/*.mjs": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

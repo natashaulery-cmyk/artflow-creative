@@ -1,4 +1,9 @@
-import { toNodeHandler } from "better-auth/node";
 import { auth } from "./_auth.mjs";
 
-export default toNodeHandler(auth);
+export function GET(request) {
+  return auth.handler(request);
+}
+
+export function POST(request) {
+  return auth.handler(request);
+}
