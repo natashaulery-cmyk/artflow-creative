@@ -193,6 +193,9 @@ export default async function(req) {
     const recordHistory = async (messageId, status, details) => {
       const payload = {
         message_id: messageId,
+        external_message_id: messageId,
+        email_provider: 'Gmail',
+        account_email: connectedEmail || workspace.email || '',
         import_type: 'expense',
         status,
         platform: 'Gmail',
@@ -287,7 +290,7 @@ export default async function(req) {
       let messageCreated = 0;
       for (let index = 0; index < expenses.length; index++) {
         const expense = expenses[index];
-        const receiptId = `${id}:${index}`;
+        const receiptId = `gmail:${String(connectedEmail || workspace.email || '').toLowerCase()}:${id}:${index}`;
         if (seen.has(receiptId)) {
           skipped++;
           continue;
