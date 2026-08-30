@@ -10,6 +10,7 @@
   },
   "routes": [
     { "handle": "filesystem" },
+    { "src": "/api/auth/(.*)", "dest": "/api/better-auth?__path=$1" },
     { "src": "/.*", "dest": "/index.html" }
   ]
 }
