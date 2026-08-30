@@ -38,9 +38,10 @@ export default function IndependentAuthTest() {
         <div><span className="text-muted-foreground">Status:</span> Signed in</div>
       </div>
       <p className="mt-4 text-sm text-muted-foreground text-center leading-6">
-        Next, your existing Art Flow business data will be moved from Base44 to Neon and this login will become the main app login.
+        Your Base44 business data has now been migrated to Neon. Verify the linked data before this login becomes the main app login.
       </p>
-      <Button type="button" variant="outline" className="w-full h-12 mt-5" onClick={signOut}>
+      <Link to="/new-data-test"><Button type="button" className="w-full h-12 mt-5">Check migrated Neon data</Button></Link>
+      <Button type="button" variant="outline" className="w-full h-12 mt-3" onClick={signOut}>
         <LogOut className="w-4 h-4 mr-2" />Sign out
       </Button>
     </AuthLayout>
