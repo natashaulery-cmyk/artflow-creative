@@ -62,6 +62,7 @@ function toOrderLines(transactions = []) {
       title: String(tx?.title || 'Etsy sale').trim() || 'Etsy sale',
       quantity,
       total: unit * quantity,
+      source_url: tx?.listing_id ? `https://www.etsy.com/listing/${tx.listing_id}` : '',
     };
   }).filter((line) => Number(line.total) > 0);
 }
