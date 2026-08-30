@@ -1,0 +1,77 @@
+{
+  "name": "EbayConnection",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "ebay_user_id": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "access_token": {
+      "type": "string"
+    },
+    "refresh_token": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "scopes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "disconnected",
+        "error"
+      ]
+    },
+    "oauth_state": {
+      "type": "string"
+    },
+    "notification_destination_id": {
+      "type": "string"
+    },
+    "notification_subscription_id": {
+      "type": "string"
+    },
+    "last_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id",
+    "owner_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
