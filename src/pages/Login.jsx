@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { artflowAuthClient } from "@/lib/artflowAuthClient";
 
 export default function Login() {
   const returnTo = safeReturnTo();
@@ -19,9 +20,25 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const { base44 } = await import("@/api/base44Client");
-      await base44.auth.loginViaEmailPassword(email.trim(), password);
-      window.location.href = returnTo;
+      const { error: neonError } = await artflowAuthClient.signIn.email({
+        email: email.trim(),
+        password,
+        rememberMe: true,
+      });
+      if (!neonError) {
+        window.location.href = returnTo;
+        return;
+      }
+
+      // Temporary fallback for users who still only have a legacy Base44 login.
+      try {
+        const { base44 } = await import("@/api/base44Client");
+        await base44.auth.loginViaEmailPassword(email.trim(), password);
+        window.location.href = returnTo;
+        return;
+      } catch {
+        throw new Error(neonError.message || "Email or password is incorrect.");
+      }
     } catch (err) {
       setError(err?.message || "Could not sign in. Check your email and password.");
     } finally {
@@ -36,7 +53,7 @@ export default function Login() {
       subtitle="Log in to your Art Flow Creative account"
       footer={
         <>
-          Previously used Google? Use Forgot password with the same email to set a password for this Vercel version.
+          Use the email and password for your Art Flow account.
         </>
       }
     >
