@@ -6,7 +6,15 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
 
   let user = requestedEmail
     ? users.find((u) => lower(u.email) === requestedEmail)
-    : await base44.auth.me().catch(() => null);
+    : null;
+
+  // A connected mailbox can use a different address from the user's ArtFlow
+  // login. Prefer the authenticated app user before any legacy/admin fallback so
+  // Outlook/Yahoo inboxes cannot be attached to another tenant by email alone.
+  if (!user || user.is_service) {
+    const signedInUser = await base44.auth.me().catch(() => null);
+    if (signedInUser && !signedInUser.is_service) user = signedInUser;
+  }
 
   if (!user || user.is_service) {
     user = users.find((u) => lower(u.email) === requestedEmail)
@@ -58,11 +66,20 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
     user.email,
   ].map(lower).filter(Boolean)));
 
+  if (business?.id && requestedEmail && !(business.sales_emails || []).some((member) => lower(member) === requestedEmail)) {
+    try {
+      await base44.asServiceRole.entities.Business.update(business.id, {
+        sales_emails: Array.from(new Set([...(business.sales_emails || []), requestedEmail])),
+      });
+      accessEmails.push(requestedEmail);
+    } catch {}
+  }
+
   return {
     ownerId: user.id,
     businessId: business?.id || null,
-    email: user.email || emailHint || null,
-    accessEmails,
+    email: emailHint || user.email || null,
+    accessEmails: Array.from(new Set(accessEmails)),
   };
 }
 
