@@ -1,0 +1,4 @@
+{
+  "name": "syncSheetExpenseFallback",
+  "entry": "entry.ts"
+}
