@@ -32,7 +32,7 @@ export default function Login() {
   const handleGoogleLogin = () => {
     setError("");
     import("@/api/base44Client")
-      .then(({ base44 }) => base44.auth.redirectToLogin(`${window.location.origin}${returnTo}`))
+      .then(({ base44 }) => base44.auth.loginWithProvider("google", `${window.location.origin}${returnTo}`))
       .catch((err) => setError(err?.message || "Google sign-in is unavailable right now."));
   };
 
