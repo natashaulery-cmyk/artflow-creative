@@ -44,6 +44,20 @@ function decryptToken(row) {
   ]).toString('utf8');
 }
 
+function decryptWebhookSecret(row) {
+  if (!row?.webhook_secret_cipher || !row?.webhook_secret_iv || !row?.webhook_secret_tag) return null;
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    encryptionKey(),
+    Buffer.from(row.webhook_secret_iv, 'base64')
+  );
+  decipher.setAuthTag(Buffer.from(row.webhook_secret_tag, 'base64'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(row.webhook_secret_cipher, 'base64')),
+    decipher.final(),
+  ]).toString('utf8');
+}
+
 async function getSession(req) {
   return auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
 }
@@ -62,9 +76,45 @@ async function ensureSchema(client) {
       last_sync_at timestamptz,
       last_error text,
       last_order_count integer NOT NULL DEFAULT 0,
-      sync_cursor integer NOT NULL DEFAULT 1
+      sync_cursor integer NOT NULL DEFAULT 1,
+      webhook_key text,
+      webhook_id text,
+      webhook_secret_cipher text,
+      webhook_secret_iv text,
+      webhook_secret_tag text,
+      webhook_url text,
+      webhook_active boolean NOT NULL DEFAULT false,
+      last_webhook_at timestamptz
     )
   `);
+  const flufConnectionAdditions = [
+    ['webhook_key', 'text'],
+    ['webhook_id', 'text'],
+    ['webhook_secret_cipher', 'text'],
+    ['webhook_secret_iv', 'text'],
+    ['webhook_secret_tag', 'text'],
+    ['webhook_url', 'text'],
+    ['webhook_active', 'boolean NOT NULL DEFAULT false'],
+    ['last_webhook_at', 'timestamptz'],
+  ];
+  for (const [name, type] of flufConnectionAdditions) {
+    await client.query(`ALTER TABLE artflow.fluf_connections ADD COLUMN IF NOT EXISTS ${name} ${type}`);
+  }
+  await client.query('CREATE UNIQUE INDEX IF NOT EXISTS artflow_fluf_webhook_key_uq ON artflow.fluf_connections(webhook_key) WHERE webhook_key IS NOT NULL');
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS artflow.fluf_webhook_deliveries (
+      event_id text PRIMARY KEY,
+      auth_user_id text NOT NULL,
+      event_name text,
+      attempt integer,
+      received_at timestamptz NOT NULL DEFAULT now(),
+      processed_at timestamptz,
+      status text NOT NULL DEFAULT 'received',
+      error text,
+      payload jsonb NOT NULL DEFAULT '{}'::jsonb
+    )
+  `);
+  await client.query('CREATE INDEX IF NOT EXISTS artflow_fluf_deliveries_user_idx ON artflow.fluf_webhook_deliveries(auth_user_id, received_at DESC)');
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS artflow.orders (
@@ -126,13 +176,16 @@ async function ensureSchema(client) {
   await client.query('CREATE INDEX IF NOT EXISTS artflow_orders_fluf_source_idx ON artflow.orders(sync_source, source_email_id)');
 }
 
-async function flufRequest(token, path) {
+async function flufRequest(token, path, { method = 'GET', body } = {}) {
   const res = await fetch(`${FLUF_BASE_URL}${path}`, {
+    method,
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
+      'Content-Type': 'application/json',
       'User-Agent': 'ArtFlowCreative/1.0',
     },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
   let data = null;
@@ -146,6 +199,45 @@ async function flufRequest(token, path) {
     throw err;
   }
   return data;
+}
+
+async function registerWebhook(client, session, token) {
+  const key = crypto.randomBytes(24).toString('hex');
+  const baseUrl = String(process.env.BETTER_AUTH_URL || 'https://art-flow-creative-staging.vercel.app').replace(/\/$/, '');
+  const url = `${baseUrl}/api/fluf-webhook?k=${encodeURIComponent(key)}`;
+  const created = await flufRequest(token, '/wp-json/fc/api/v1/webhooks', {
+    method: 'POST',
+    body: {
+      url,
+      events: ['new_sale'],
+      description: 'Art Flow Creative real-time sales sync',
+    },
+  });
+  if (!created?.secret || created?.id === undefined || created?.id === null) {
+    throw new Error('FLUF created the webhook but did not return its verification secret.');
+  }
+  const enc = encryptToken(String(created.secret));
+  await client.query(
+    `UPDATE artflow.fluf_connections
+        SET webhook_key=$2, webhook_id=$3,
+            webhook_secret_cipher=$4, webhook_secret_iv=$5, webhook_secret_tag=$6,
+            webhook_url=$7, webhook_active=true, updated_at=now(), last_error=NULL
+      WHERE auth_user_id=$1`,
+    [session.user.id, key, String(created.id), enc.cipher, enc.iv, enc.tag, url]
+  );
+
+  let testStatus = null;
+  try {
+    const test = await flufRequest(token, `/wp-json/fc/api/v1/webhooks/${encodeURIComponent(String(created.id))}/test`, { method: 'POST' });
+    testStatus = test?.status_code ?? test?.status ?? null;
+  } catch (error) {
+    await client.query(
+      `UPDATE artflow.fluf_connections SET last_error=$2, updated_at=now() WHERE auth_user_id=$1`,
+      [session.user.id, `Webhook registered, but FLUF's test delivery reported: ${String(error?.message || error).slice(0, 400)}`]
+    );
+  }
+
+  return { id: String(created.id), url, testStatus };
 }
 
 function extractOrders(payload) {
@@ -264,6 +356,7 @@ function normalizeOrder(order, userEmail) {
   const buyer = String(first(
     order.buyer?.name,
     order.buyer?.username,
+    order.buyer_username,
     order.customer?.name,
     order.customer_name,
     order.customerName,
@@ -462,6 +555,9 @@ export default async function handler(req, res) {
         last_sync_at: connection?.last_sync_at || null,
         last_error: connection?.last_error || null,
         last_order_count: connection?.last_order_count || 0,
+        webhook_active: Boolean(connection?.webhook_active && connection?.webhook_secret_cipher),
+        webhook_url: connection?.webhook_url || null,
+        last_webhook_at: connection?.last_webhook_at || null,
       });
     }
 
@@ -474,15 +570,50 @@ export default async function handler(req, res) {
       const enc = encryptToken(token);
       await client.query(
         `INSERT INTO artflow.fluf_connections (
-           auth_user_id,email,token_cipher,token_iv,token_tag,connected_at,updated_at,last_error,sync_cursor
-         ) VALUES ($1,$2,$3,$4,$5,now(),now(),NULL,1)
+           auth_user_id,email,token_cipher,token_iv,token_tag,connected_at,updated_at,last_error,sync_cursor,
+           webhook_active
+         ) VALUES ($1,$2,$3,$4,$5,now(),now(),NULL,1,false)
          ON CONFLICT (auth_user_id) DO UPDATE SET
            email=EXCLUDED.email, token_cipher=EXCLUDED.token_cipher,
            token_iv=EXCLUDED.token_iv, token_tag=EXCLUDED.token_tag,
            connected_at=now(), updated_at=now(), last_error=NULL, sync_cursor=1`,
         [session.user.id, normalizeEmail(session.user.email), enc.cipher, enc.iv, enc.tag]
       );
-      return res.status(200).json({ connected: true, message: 'FLUF connected to Art Flow.' });
+      let webhook = null;
+      let webhookError = null;
+      const current = await getConnection(client, session);
+      if (current?.webhook_active && current?.webhook_secret_cipher) {
+        webhook = { id: current.webhook_id, url: current.webhook_url, reused: true };
+      } else {
+        try {
+          webhook = await registerWebhook(client, session, token);
+        } catch (error) {
+          webhookError = String(error?.message || error);
+          await client.query(
+            `UPDATE artflow.fluf_connections SET webhook_active=false, last_error=$2, updated_at=now() WHERE auth_user_id=$1`,
+            [session.user.id, `Real-time sales setup: ${webhookError}`.slice(0, 500)]
+          );
+        }
+      }
+      return res.status(200).json({
+        connected: true,
+        webhook_active: Boolean(webhook),
+        webhook_error: webhookError,
+        message: webhook
+          ? 'FLUF connected. New sales will arrive in Art Flow automatically.'
+          : 'FLUF connected for manual syncing. Real-time webhook setup still needs attention.',
+      });
+    }
+
+    if (req.method === 'POST' && op === 'enable-webhook') {
+      const connection = await getConnection(client, session);
+      if (!connection) return res.status(409).json({ error: 'Connect FLUF first.' });
+      if (connection.webhook_active && connection.webhook_secret_cipher) {
+        return res.status(200).json({ webhook_active: true, message: 'Real-time FLUF sales are already enabled.' });
+      }
+      const token = decryptToken(connection);
+      const webhook = await registerWebhook(client, session, token);
+      return res.status(200).json({ webhook_active: true, webhook_id: webhook.id, message: 'Real-time FLUF sales are enabled.' });
     }
 
     if (req.method === 'POST' && op === 'sync') {
