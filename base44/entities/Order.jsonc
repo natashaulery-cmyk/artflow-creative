@@ -11,11 +11,8 @@
       "enum": [
         "Vinted",
         "Depop",
-        "Mercari",
-        "Poshmark",
         "eBay",
-        "Etsy",
-        "Stan Store"
+        "Etsy"
       ]
     },
     "order_id": {
