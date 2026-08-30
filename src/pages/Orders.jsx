@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Plus, RefreshCw } from "lucide-react";
+import { Search, Plus, RefreshCw, ExternalLink } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { useOrders } from "@/lib/useOrders";
 import { base44 } from "@/api/base44Client";
@@ -11,7 +11,7 @@ import { useModalRoute } from "@/hooks/useModalRoute";
 import { useLocation } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import SyncStatus from "@/components/SyncStatus";
-import { PLATFORMS, PLATFORM_TONE, displayPlatform, displayProductName } from "@/lib/platforms";
+import { PLATFORMS, PLATFORM_TONE, displayPlatform, displayProductName, orderSourceUrl } from "@/lib/platforms";
 import { toast } from "sonner";
 
 export default function Orders() {
@@ -230,10 +230,17 @@ export default function Orders() {
 
       <div className="space-y-2">
         {filtered.length === 0 && <EmptyRow text="No orders match your filters" />}
-        {filtered.map((o) => (
-          <div
+        {filtered.map((o) => {
+          const sourceUrl = orderSourceUrl(o);
+          return (
+          <a
             key={o.id}
-            className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))]"
+            href={sourceUrl || undefined}
+            target={sourceUrl ? "_blank" : undefined}
+            rel={sourceUrl ? "noreferrer" : undefined}
+            onClick={(event) => { if (!sourceUrl) event.preventDefault(); }}
+            className={`block bg-card rounded-2xl p-4 border border-[hsl(var(--border))] transition-transform ${sourceUrl ? "active:scale-[0.99]" : ""}`}
+            aria-label={sourceUrl ? `Open ${displayPlatform(o.platform)} order` : undefined}
           >
             <div className="flex items-start justify-between mb-2">
               <div className="min-w-0">
@@ -242,13 +249,16 @@ export default function Orders() {
                   <span className="text-foreground">{o.size}</span> · Qty <span className="text-foreground">{o.quantity}</span> · <span className="text-foreground">{formatDate(o.sale_date)}</span>
                 </p>
               </div>
-              <span
-                className={`shrink-0 ml-2 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  PLATFORM_TONE[displayPlatform(o.platform)] || "bg-muted text-muted-foreground"
-                }`}
-              >
-                {displayPlatform(o.platform)}
-              </span>
+              <div className="shrink-0 ml-2 flex items-center gap-1.5">
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                    PLATFORM_TONE[displayPlatform(o.platform)] || "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {displayPlatform(o.platform)}
+                </span>
+                {sourceUrl && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />}
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-[hsl(var(--border))]">
               <div>
@@ -266,8 +276,9 @@ export default function Orders() {
                 </p>
               </div>
             </div>
-          </div>
-        ))}
+          </a>
+          );
+        })}
       </div>
 
       <button
