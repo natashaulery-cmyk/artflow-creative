@@ -29,3 +29,16 @@ export function displayProductName(order) {
   const name = String(order?.product_name || "").trim();
   return name || `${displayPlatform(order?.platform)} sale`;
 }
+
+const PLATFORM_URL = {
+  Vinted: "https://www.vinted.com/",
+  Depop: "https://www.depop.com/",
+  eBay: "https://www.ebay.com/",
+  Etsy: "https://www.etsy.com/",
+};
+
+export function orderSourceUrl(order) {
+  const direct = String(order?.source_url || "").trim();
+  if (/^https:\/\//i.test(direct)) return direct;
+  return PLATFORM_URL[displayPlatform(order?.platform)] || "";
+}
