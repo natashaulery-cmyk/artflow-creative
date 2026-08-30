@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
+import { artflowAuthClient } from '@/lib/artflowAuthClient';
 
 const AuthContext = createContext();
 
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [authBackend, setAuthBackend] = useState(null);
   const syncInFlight = useRef(false);
 
   useEffect(() => {
@@ -32,13 +34,6 @@ export const AuthProvider = ({ children }) => {
     // render and the SDK auth check can recover once the configuration is fixed.
     setIsLoadingPublicSettings(false);
     setAuthError(null);
-
-    if (!appParams.token) {
-      setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      setAuthChecked(true);
-      return;
-    }
 
     await checkUserAuth();
   };
@@ -131,9 +126,9 @@ export const AuthProvider = ({ children }) => {
   }, [publishSyncState]);
 
   useEffect(() => {
-    if (!isAuthenticated) return undefined;
+    if (!isAuthenticated || authBackend !== 'base44') return undefined;
 
-    // Keep sales reasonably fresh without burning integration credits every minute.
+    // Keep legacy Base44 sales reasonably fresh while that backend is still available.
     // Expense classification can invoke AI, so run that automatically only once per
     // hour while the app is open (plus the initial login sync and the manual button).
     const salesId = window.setInterval(() => triggerLoginSync(), 5 * 60 * 1000);
@@ -154,38 +149,79 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener('online', syncWhenActive);
       document.removeEventListener('visibilitychange', syncWhenActive);
     };
-  }, [isAuthenticated, triggerLoginSync]);
+  }, [isAuthenticated, authBackend, triggerLoginSync]);
 
   const checkUserAuth = async () => {
+    setIsLoadingAuth(true);
+    setAuthError(null);
+
+    // The new Art Flow account system is authoritative. It is backed by Neon
+    // through Better Auth and is the same session used by the FLUF API routes.
     try {
-      // Now check if the user is authenticated
-      setIsLoadingAuth(true);
-      const currentUser = await withTimeout(base44.auth.me(), 8000, 'Authentication check');
-      const businessId = await ensureBusinessWorkspace(currentUser);
-      const hydratedUser = businessId
-        ? { ...currentUser, active_business_id: businessId, data: { ...(currentUser.data || {}), active_business_id: businessId } }
-        : currentUser;
-      setUser(hydratedUser);
-      setIsAuthenticated(true);
-      setIsLoadingAuth(false);
-      setAuthChecked(true);
-      // Sync immediately after login, including expenses. After that, sales refresh
-      // every five minutes while the app is open and expenses refresh hourly.
-      triggerLoginSync({ includeExpenses: true });
+      const sessionResult = await artflowAuthClient.getSession();
+      const session = sessionResult?.data || sessionResult;
+      if (session?.user) {
+        let summary = null;
+        try {
+          const response = await fetch('/api/neon-data?op=summary', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          if (response.ok) summary = await response.json();
+        } catch {
+          // A summary failure must not invalidate a valid login session.
+        }
+
+        const activeBusinessId = summary?.user?.activeBusinessId || null;
+        const currentUser = {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.name || summary?.user?.name || 'Artist',
+          name: session.user.name || summary?.user?.name || 'Artist',
+          role: 'user',
+          active_business_id: activeBusinessId,
+          data: { active_business_id: activeBusinessId },
+          auth_backend: 'neon',
+        };
+
+        setUser(currentUser);
+        setAuthBackend('neon');
+        setIsAuthenticated(true);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return;
+      }
     } catch (error) {
-      console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      setAuthChecked(true);
-      
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
+      console.warn('Neon auth check did not return a session:', error?.message || error);
+    }
+
+    // Temporary compatibility fallback for accounts that have not yet moved
+    // from Base44. This can be removed after the migration is complete.
+    if (appParams.token) {
+      try {
+        const currentUser = await withTimeout(base44.auth.me(), 8000, 'Authentication check');
+        const businessId = await ensureBusinessWorkspace(currentUser);
+        const hydratedUser = businessId
+          ? { ...currentUser, active_business_id: businessId, data: { ...(currentUser.data || {}), active_business_id: businessId }, auth_backend: 'base44' }
+          : { ...currentUser, auth_backend: 'base44' };
+        setUser(hydratedUser);
+        setAuthBackend('base44');
+        setIsAuthenticated(true);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        triggerLoginSync({ includeExpenses: true });
+        return;
+      } catch (error) {
+        console.warn('Legacy auth check failed:', error?.message || error);
       }
     }
+
+    setUser(null);
+    setAuthBackend(null);
+    setIsLoadingAuth(false);
+    setIsAuthenticated(false);
+    setAuthChecked(true);
+    setAuthError({ type: 'auth_required', message: 'Authentication required' });
   };
 
   const logout = (shouldRedirect = true) => {
