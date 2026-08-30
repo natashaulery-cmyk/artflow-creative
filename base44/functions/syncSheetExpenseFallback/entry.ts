@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
-const SHEETS = ['Expenses', 'Deductions'];
+const SHEETS = ['Expenses', 'Deductions', '💸 Expenditures / Materials'];
 
 const lower = (value = '') => String(value || '').trim().toLowerCase();
 const num = (value, fallback = 0) => {
@@ -68,16 +68,21 @@ async function fetchRows(spreadsheetId, sheetName, accessToken) {
 }
 
 function parseRows(rows, sheetName) {
-  const headerIndex = rows.findIndex((row) =>
-    Array.isArray(row) && row.some((cell) => /^date$/i.test(String(cell || '').trim())) && row.some((cell) => /description/i.test(String(cell || '')))
-  );
+  const headerIndex = rows.findIndex((row) => {
+    if (!Array.isArray(row)) return false;
+    const cells = row.map((cell) => lower(cell));
+    const hasDate = cells.some((cell) => cell === 'date' || cell.includes('purchase date'));
+    const hasDescription = cells.some((cell) => cell.includes('description') || cell === 'item');
+    const hasAmount = cells.some((cell) => cell === 'amount' || cell.includes('total') || cell.includes('cost price') || cell.includes('purchase price'));
+    return hasDate && hasDescription && hasAmount;
+  });
   if (headerIndex < 0) return [];
   const headers = headerMap(rows[headerIndex]);
   const idx = {
-    date: findIndex(headers, ['date']),
+    date: findIndex(headers, ['purchase date', 'date']),
     category: findIndex(headers, ['category']),
     description: findIndex(headers, ['description', 'item', 'vendor']),
-    amount: findIndex(headers, ['amount', 'total']),
+    amount: findIndex(headers, ['cost price', 'purchase price', 'amount', 'total']),
     deductiblePercent: findIndex(headers, ['deductible %', 'deductible percent']),
     deductibleAmount: findIndex(headers, ['deductible amount']),
     source: findIndex(headers, ['source', 'vendor', 'merchant']),
@@ -150,16 +155,12 @@ export default async function(req) {
     const { ownerId, businessId, accessEmails = [] } = workspace;
     if (!ownerId || !businessId) return Response.json({ error: 'No business workspace found.' }, { status: 400 });
 
-    const [expenseRows, deductionRows, allExpenses] = await Promise.all([
-      fetchRows(spreadsheetId, 'Expenses', accessToken),
-      fetchRows(spreadsheetId, 'Deductions', accessToken),
+    const [sheetRows, allExpenses] = await Promise.all([
+      Promise.all(SHEETS.map(async (sheetName) => ({ sheetName, rows: await fetchRows(spreadsheetId, sheetName, accessToken) }))),
       base44.asServiceRole.entities.Expense.list('-date', 5000),
     ]);
 
-    const candidates = [
-      ...parseRows(expenseRows, 'Expenses'),
-      ...parseRows(deductionRows, 'Deductions'),
-    ];
+    const candidates = sheetRows.flatMap(({ sheetName, rows }) => parseRows(rows, sheetName));
     const existing = allExpenses.filter((expense) =>
       !expense.archived && (expense.business_id === businessId || (!expense.business_id && expense.created_by_id === ownerId))
     );
