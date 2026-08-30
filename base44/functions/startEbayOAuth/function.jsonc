@@ -1,0 +1,4 @@
+{
+  "name": "startEbayOAuth",
+  "entry": "entry.ts"
+}
