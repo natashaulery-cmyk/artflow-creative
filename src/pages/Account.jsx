@@ -11,6 +11,7 @@ import EtsyConnectionCard from "@/components/EtsyConnectionCard";
 import VintedConnectionCard from "@/components/VintedConnectionCard";
 import EmailConnectionsCard from "@/components/EmailConnectionsCard";
 import DepopConnectionCard from "@/components/DepopConnectionCard";
+import EbayConnectionCard from "@/components/EbayConnectionCard";
 import { toast } from "sonner";
 
 export default function Account() {
@@ -62,6 +63,8 @@ export default function Account() {
       <VintedConnectionCard />
 
       <DepopConnectionCard />
+
+      <EbayConnectionCard />
 
       <ThemeSettings />
 
