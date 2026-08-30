@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2, AlertTriangle, LifeBuoy } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
