@@ -1,0 +1,4 @@
+{
+  "name": "setupVintedWebhook",
+  "entry": "entry.ts"
+}
