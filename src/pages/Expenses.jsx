@@ -26,8 +26,39 @@ export default function Expenses() {
   const importForwardedExpenses = async () => {
     setImportingEmail(true);
     try {
-      const res = await base44.functions.invoke("processExpenseEmails", {});
-      toast.success(res.data?.message || "Expense emails checked");
+      const messages = [];
+
+      // Primary email sources first. Each provider is optional and independent;
+      // an unconnected inbox must never block the rest of the expense sync.
+      for (const functionName of ["processExpenseEmails", "processOutlookExpenseEmails"]) {
+        try {
+          let res = await base44.functions.invoke(functionName, {});
+          let data = res?.data || {};
+          let pass = 0;
+          while (Number(data.remaining || 0) > 0 && pass < 12) {
+            await reloadExpenses();
+            await new Promise((resolve) => window.setTimeout(resolve, 350));
+            res = await base44.functions.invoke(functionName, {});
+            data = res?.data || {};
+            pass += 1;
+          }
+          if (data.message) messages.push(data.message);
+        } catch {
+          // Expected when that provider is not connected for this user.
+        }
+      }
+
+      // Google Sheets runs last by design. It only adds rows that do not match
+      // an existing expense, so it is the safety net rather than the authority.
+      try {
+        const sheetRes = await base44.functions.invoke("syncSheetExpenseFallback", {});
+        const sheetData = sheetRes?.data || {};
+        if (sheetData.message) messages.push(sheetData.message);
+      } catch {
+        // Spreadsheet backup is optional.
+      }
+
+      toast.success(messages.at(-1) || "All connected expense sources are up to date");
       await reloadExpenses();
     } catch (e) {
       toast.error("Expense import failed", { description: e?.response?.data?.error || e?.message });
