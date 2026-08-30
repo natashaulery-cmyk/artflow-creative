@@ -1,0 +1,4 @@
+{
+  "name": "setupDepopWebhook",
+  "entry": "entry.ts"
+}
