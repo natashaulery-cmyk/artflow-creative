@@ -6,7 +6,7 @@ import { parseKnownSale, platformFromSender, sameSale, validDate } from '../../s
 
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 150;
-const MARKETPLACE = /vinted|depop|etsy|poshmark|ebay/i;
+const MARKETPLACE = /vinted|depop|etsy|ebay/i;
 
 async function saveState(base44, ownerId, businessId, data) {
   if (!businessId) return;
@@ -87,7 +87,7 @@ export default async function(req) {
             prompt:
               'Decide whether this marketplace email proves the inbox owner completed a seller sale. Ignore offers, likes, messages, cancellations, refunds, payouts, fees, purchases by the inbox owner, and emails without a clear sold-item price. Never invent values.\n' +
               `Sender: ${sender}\nSubject: ${subject}\nReceived date: ${fallbackDate}\nBody: ${body.slice(0, 18000)}\n` +
-              'Return JSON with is_sale, platform (Vinted, Depop, Etsy, Poshmark, or eBay), order_id, product_name, quantity, size, sale_total, buyer, and sale_date (YYYY-MM-DD).',
+              'Return JSON with is_sale, platform (Vinted, Depop, Etsy, or eBay), order_id, product_name, quantity, size, sale_total, buyer, and sale_date (YYYY-MM-DD).',
             response_json_schema: {
               type: 'object',
               properties: { is_sale:{type:'boolean'}, platform:{type:'string'}, order_id:{type:'string'}, product_name:{type:'string'}, quantity:{type:'number'}, size:{type:'string'}, sale_total:{type:'number'}, buyer:{type:'string'}, sale_date:{type:'string'} },
@@ -99,7 +99,7 @@ export default async function(req) {
 
         const saleTotal = Number(order?.sale_total);
         const quantity = Math.max(1, Number(order?.quantity) || 1);
-        const platform = ['Vinted','Depop','Etsy','Poshmark','eBay'].includes(order?.platform) ? order.platform : inferredPlatform;
+        const platform = ['Vinted','Depop','Etsy','eBay'].includes(order?.platform) ? order.platform : inferredPlatform;
         if (!order?.is_sale || !order?.product_name || !Number.isFinite(saleTotal) || saleTotal <= 0 || !platform) {
           await recordHistory(message.id, 'skipped', platform, subject || 'Not a completed seller sale');
           skipped++;
