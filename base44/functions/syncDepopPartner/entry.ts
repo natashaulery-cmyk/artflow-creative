@@ -16,6 +16,11 @@ const money = (value) => {
   const n = Number(value || 0);
   return Number.isFinite(n) ? n : 0;
 };
+const refundItemAmount = (order = {}) => money(
+  order?.refund_summary?.breakdown?.refunded_to_buyer?.item_refund_amount
+  ?? order?.refund_summary?.buyer_refund_amount
+  ?? 0
+);
 
 async function saveState(base44, ownerId, businessId, payload) {
   if (!ownerId || !businessId) return;
@@ -134,10 +139,19 @@ export default async function(req) {
       const saleDate = String(order.created_at || order.date || '').slice(0, 10);
       if (!saleDate || saleDate < START_DATE) continue;
 
-      // Depop keeps refunded orders in the Orders API. Exclude fully refunded
-      // purchases from live sales totals during every reconciliation pass so a
-      // missed webhook cannot leave a refunded sale counted forever.
-      if (String(order.status || '').toUpperCase() === 'REFUNDED') {
+      const rawItems = Array.isArray(order.line_items) ? order.line_items : Array.isArray(order.items) ? order.items : Array.isArray(order.products) ? order.products : [];
+      const fallbackTitle = String(order.description || order.product_name || 'Depop sale');
+      const fallbackPrice = money(order.sold_price || order.subtotal || order.total || order.amount);
+      const items = rawItems.length ? rawItems : [{ description: fallbackTitle, sold_price: fallbackPrice }];
+      const originalItemsTotal = items.reduce((sum, item) => sum + money(item?.sold_price || item?.price || item?.original_price || fallbackPrice), 0);
+      const refundedItems = Math.max(0, refundItemAmount(order));
+      const fullyRefunded = String(order.status || '').toUpperCase() === 'REFUNDED'
+        && originalItemsTotal > 0
+        && refundedItems >= originalItemsTotal - 0.005;
+
+      // Depop keeps refunded orders in the Orders API. Only fully refunded item
+      // value should disappear from live sales; partial refunds reduce the sale.
+      if (fullyRefunded) {
         for (const existing of targetOrders.filter((o) => o.platform === 'Depop' && String(o.order_id || '') === purchaseId && !o.archived)) {
           await base44.asServiceRole.entities.Order.update(existing.id, { archived: true, sync_source: 'depop_api_refunded' });
           existing.archived = true;
@@ -145,16 +159,15 @@ export default async function(req) {
         }
         continue;
       }
-
-      const rawItems = Array.isArray(order.line_items) ? order.line_items : Array.isArray(order.items) ? order.items : Array.isArray(order.products) ? order.products : [];
-      const fallbackTitle = String(order.description || order.product_name || 'Depop sale');
-      const fallbackPrice = money(order.sold_price || order.subtotal || order.total || order.amount);
-      const items = rawItems.length ? rawItems : [{ description: fallbackTitle, sold_price: fallbackPrice }];
+      const keepRatio = refundedItems > 0 && originalItemsTotal > 0
+        ? Math.max(0, (originalItemsTotal - refundedItems) / originalItemsTotal)
+        : 1;
 
       for (let index = 0; index < items.length; index += 1) {
         const item = items[index] || {};
         const title = String(item.description || item.title || item.name || fallbackTitle || 'Depop sale').trim();
-        const price = money(item.sold_price || item.price || item.original_price || fallbackPrice);
+        const originalPrice = money(item.sold_price || item.price || item.original_price || fallbackPrice);
+        const price = +(originalPrice * keepRatio).toFixed(2);
         if (!(price > 0)) continue;
 
         const candidate = { order_id: purchaseId, sale_date: saleDate, sale_total: price, product_name: title };
@@ -173,7 +186,7 @@ export default async function(req) {
           platform: 'Depop',
           order_id: purchaseId || null,
           source_email_id: sourceId,
-          sync_source: 'depop_api',
+          sync_source: refundedItems > 0 ? 'depop_api_partial_refund' : 'depop_api',
           sale_date: saleDate,
           product_name: title,
           quantity: 1,
