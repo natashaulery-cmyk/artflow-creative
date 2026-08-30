@@ -228,6 +228,7 @@ export default async function(req) {
         const inv = inventoryCosts.find((entry) => entry.size === size);
         const costs = calculateOrderCosts({ quantity: 1, size, unit_price: price }, inv);
         const buyer = order.delivery_address?.name || order.billing_address?.name || '';
+        const sourceUrl = String(item?.url || item?.item_url || item?.listing_url || '').trim() || null;
 
         if (existing) {
           const patch = {
@@ -244,6 +245,7 @@ export default async function(req) {
             unit_price: price,
             sale_total: price,
             buyer: buyer || existing.buyer || null,
+            source_url: sourceUrl || existing.source_url || null,
             archived: false,
             ...costs,
           };
@@ -267,6 +269,7 @@ export default async function(req) {
           unit_price: price,
           sale_total: price,
           buyer: buyer || null,
+          source_url: sourceUrl,
           archived: false,
           created_by_id: ownerId,
           ...costs,
