@@ -28,6 +28,7 @@ import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfService from '@/pages/TermsOfService';
 import Support from '@/pages/Support';
 import EtsyCallback from '@/pages/EtsyCallback';
+import EbayCallback from '@/pages/EbayCallback';
 // Add page imports here
 
 const TabShell = () => null;
@@ -109,6 +110,7 @@ const AuthenticatedApp = () => {
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/account" element={<Account />} />
           <Route path="/etsy/callback" element={<EtsyCallback />} />
+          <Route path="/ebay/callback" element={<EbayCallback />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/mileage" element={<Mileage />} />
