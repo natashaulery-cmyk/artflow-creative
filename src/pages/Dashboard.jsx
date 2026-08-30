@@ -9,7 +9,7 @@ import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import LowStockAlert from "@/components/LowStockAlert";
 import PageHeader from "@/components/PageHeader";
 import SyncStatus from "@/components/SyncStatus";
-import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
+import { PLATFORMS, PLATFORM_BAR, displayPlatform, displayProductName } from "@/lib/platforms";
 
 const cardLink = "block active:scale-95 transition-transform";
 
@@ -172,9 +172,9 @@ export default function Dashboard() {
               className="bg-card rounded-2xl p-4 border border-[hsl(var(--border))] flex items-center justify-between active:scale-[0.99] transition-transform"
             >
               <div className="min-w-0">
-                <p className="font-medium truncate">{o.product_name}</p>
+                <p className="font-medium truncate">{displayProductName(o)}</p>
                 <p className="text-xs text-muted-foreground">
-                  {o.platform} · <span className="text-foreground">{formatDate(o.sale_date)}</span>
+                  {displayPlatform(o.platform)} · <span className="text-foreground">{formatDate(o.sale_date)}</span>
                 </p>
               </div>
               <div className="text-right ml-3 shrink-0">
