@@ -3,7 +3,7 @@
   "entry": "entry.ts",
   "automations": [
     {
-      "name": "Sync marketplace sales every minute",
+      "name": "Sync marketplace sales every 5 minutes",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
