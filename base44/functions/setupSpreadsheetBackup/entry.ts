@@ -45,6 +45,26 @@ export default async function(req) {
     const root = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}`;
     const meta = await sheetsFetch(accessToken, `${root}?fields=properties.title,sheets.properties`);
     const existingTitles = new Set((meta.sheets || []).map((sheet) => sheet?.properties?.title).filter(Boolean));
+    const compatibleExistingTracker = existingTitles.has('💸 Expenditures / Materials');
+
+    // Preserve compatible third-party/reseller trackers. ArtFlow can read the
+    // existing Expenditures / Materials columns directly, so do not clutter a
+    // user's workbook with duplicate ArtFlow tabs unless they are actually needed.
+    if (compatibleExistingTracker) {
+      if (String(user.spreadsheet_id || '') !== spreadsheetId) {
+        await base44.auth.updateMe({ spreadsheet_id: spreadsheetId });
+      }
+      return Response.json({
+        ok: true,
+        spreadsheet_id: spreadsheetId,
+        created_tabs: [],
+        initialized_tabs: [],
+        untouched_tabs: Array.from(existingTitles),
+        compatible_existing_tracker: true,
+        message: 'Spreadsheet backup is connected. ArtFlow will use the existing Expenditures / Materials tab without changing your workbook layout.',
+      });
+    }
+
     const missing = Object.keys(TAB_HEADERS).filter((title) => !existingTitles.has(title));
 
     if (missing.length) {
