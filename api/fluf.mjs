@@ -348,7 +348,7 @@ function itemList(order) {
   return Array.isArray(items) ? items : [];
 }
 
-function normalizeOrder(order, userEmail) {
+function normalizeOrder(order, userEmail, forcedPlatform = null) {
   const items = itemList(order);
   const firstItem = items[0] || {};
   const orderId = String(first(
@@ -361,7 +361,7 @@ function normalizeOrder(order, userEmail) {
     order.external_id,
     order.externalId
   ) || crypto.randomUUID());
-  const platform = resolveMarketplace(order);
+  const platform = forcedPlatform ? platformLabel(forcedPlatform) : resolveMarketplace(order);
   const quantity = Math.max(1, items.length
     ? items.reduce((sum, item) => sum + Math.max(1, numberValue(first(item.quantity, item.qty, 1))), 0)
     : numberValue(first(order.quantity, order.qty, 1)) || 1);
@@ -549,25 +549,53 @@ async function getConnection(client, session) {
   return result.rows[0] || null;
 }
 
+async function connectedFlufChannels(token) {
+  const payload = await flufRequest(token, '/wp-json/fc/listings/v1/listings?per_page=1&page=1');
+  const raw = Array.isArray(payload?.connected_channels) ? payload.connected_channels : [];
+  const channels = raw
+    .map((entry) => marketplaceCandidate(entry))
+    .map((value) => String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_'))
+    .filter((value) => value && value !== 'fluf' && value !== 'fluf_db' && value !== 'fluf_connect');
+  return Array.from(new Set(channels));
+}
+
 async function syncOrders(client, session, connection, { reset = false } = {}) {
   let page = reset ? 1 : Math.max(1, Number(connection.sync_cursor || 1));
   const perPage = 100;
-  const maxPagesThisRun = 5;
   let imported = 0;
   let updated = 0;
   let seen = 0;
   let morePossible = false;
   const token = decryptToken(connection);
   const businessId = await activeBusinessId(client, session);
+  const channels = await connectedFlufChannels(token);
 
-  for (let pass = 0; pass < maxPagesThisRun; pass += 1) {
+  // Ask FLUF for each marketplace separately. This is intentional: FLUF's
+  // unified response can identify its internal source as "fluf", while the
+  // platform query parameter is authoritative about where the order came from.
+  for (const channel of channels) {
+    const payload = await flufRequest(
+      token,
+      `/wp-json/fc/orders?platform=${encodeURIComponent(channel)}&per_page=${perPage}&page=${page}`
+    );
+    const orders = extractOrders(payload);
+    if (orders.length >= perPage) morePossible = true;
+
+    for (const raw of orders) {
+      const normalized = normalizeOrder(raw, session.user.email, channel);
+      const wasInserted = await upsertOrder(client, normalized, session, businessId);
+      if (wasInserted) imported += 1;
+      else updated += 1;
+      seen += 1;
+    }
+  }
+
+  // If no connected channel exposes order sync, fall back to FLUF's unified
+  // endpoint so the user still gets whatever order data FLUF makes available.
+  if (channels.length === 0) {
     const payload = await flufRequest(token, `/wp-json/fc/orders?per_page=${perPage}&page=${page}`);
     const orders = extractOrders(payload);
-    if (!orders.length) {
-      morePossible = false;
-      page = 1;
-      break;
-    }
+    if (orders.length >= perPage) morePossible = true;
     for (const raw of orders) {
       const normalized = normalizeOrder(raw, session.user.email);
       const wasInserted = await upsertOrder(client, normalized, session, businessId);
@@ -575,24 +603,25 @@ async function syncOrders(client, session, connection, { reset = false } = {}) {
       else updated += 1;
       seen += 1;
     }
-    if (orders.length < perPage) {
-      morePossible = false;
-      page = 1;
-      break;
-    }
-    page += 1;
-    morePossible = true;
   }
 
+  const nextPage = morePossible ? page + 1 : 1;
   await client.query(
     `UPDATE artflow.fluf_connections
         SET last_sync_at=now(), updated_at=now(), last_error=NULL,
             last_order_count=$2, sync_cursor=$3
       WHERE auth_user_id=$1`,
-    [session.user.id, seen, page]
+    [session.user.id, seen, nextPage]
   );
 
-  return { imported, updated, seen, more_possible: morePossible, next_page: page };
+  return {
+    imported,
+    updated,
+    seen,
+    more_possible: morePossible,
+    next_page: nextPage,
+    channels,
+  };
 }
 
 export default async function handler(req, res) {
