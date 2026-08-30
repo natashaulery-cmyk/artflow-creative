@@ -1,0 +1,4 @@
+{
+  "name": "processOutlookExpenseEmails",
+  "entry": "entry.ts"
+}
