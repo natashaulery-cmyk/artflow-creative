@@ -70,6 +70,54 @@ async function countBusinessRows(client, table, ids, email, archivedColumn = fal
   return result.rows[0]?.count || 0;
 }
 
+async function listOrders(client, session) {
+  const profile = await getLegacyProfile(client, session.user);
+  const businesses = await getAccessibleBusinesses(client, profile, session.user);
+  const ids = businessIds(businesses);
+  const email = normalize(session.user.email);
+  const result = await client.query(
+    `SELECT
+       base44_id AS id,
+       base44_id,
+       created_by_id,
+       created_date,
+       updated_date,
+       sale_date,
+       platform,
+       order_id,
+       product_name,
+       quantity,
+       size,
+       unit_price,
+       sale_total,
+       buyer,
+       source_email_id,
+       base_item_cost,
+       paper_ink_cost,
+       packaging_cost,
+       total_cost,
+       estimated_profit,
+       archived,
+       sync_source,
+       business_id,
+       data
+     FROM artflow.orders
+     WHERE archived IS NOT TRUE
+       AND (
+         business_id = ANY($1::text[])
+         OR EXISTS (
+           SELECT 1
+             FROM jsonb_array_elements_text(CASE WHEN jsonb_typeof(data->'access_emails')='array' THEN data->'access_emails' ELSE '[]'::jsonb END) e(value)
+            WHERE lower(e.value) = $2
+         )
+       )
+     ORDER BY sale_date DESC NULLS LAST, created_date DESC NULLS LAST
+     LIMIT 10000`,
+    [ids, email]
+  );
+  return result.rows;
+}
+
 async function summary(client, session) {
   const profile = await getLegacyProfile(client, session.user);
   const businesses = await getAccessibleBusinesses(client, profile, session.user);
@@ -105,6 +153,7 @@ export default async function handler(req, res) {
   try {
     const op = String(req.query?.op || 'summary');
     if (op === 'summary') return res.status(200).json(await summary(client, session));
+    if (op === 'orders') return res.status(200).json({ orders: await listOrders(client, session) });
     return res.status(400).json({ error: 'Unknown operation' });
   } catch (e) {
     console.error('neon data error', e?.message || e);
