@@ -37,7 +37,7 @@ export default function Orders() {
   const importEmailSales = async () => {
     setImportingEmail(true);
     try {
-      const directSources = ["syncVintedPro", "syncDepopPartner", "syncEtsy"];
+      const directSources = ["syncVintedPro", "syncDepopPartner", "syncEtsy", "syncEbay"];
       const directMessages = [];
 
 
