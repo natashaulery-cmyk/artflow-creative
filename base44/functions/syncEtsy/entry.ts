@@ -92,7 +92,8 @@ export default async function(req) {
       let existing=target.find(o=>o.source_email_id===sourceId || (o.platform==='Etsy' && receiptId && String(o.order_id||'')===receiptId && norm(o.product_name)===norm(title)));
       const size=inferSize(title); const inv=invs.find(i=>i.size===size);
       const costs=calculateOrderCosts({quantity:qty,size,unit_price:total/qty},inv);
-      const payload={business_id:businessId,access_emails:accessEmails,platform:'Etsy',order_id:receiptId,source_email_id:sourceId,sync_source:'etsy_api',sale_date:saleDate,product_name:title,quantity:qty,size,unit_price:total/qty,sale_total:total,buyer:receipt.name||receipt.buyer_email||null,archived:false,...costs};
+      const sourceUrl=tx.listing_id?`https://www.etsy.com/listing/${tx.listing_id}`:null;
+      const payload={business_id:businessId,access_emails:accessEmails,platform:'Etsy',order_id:receiptId,source_email_id:sourceId,sync_source:'etsy_api',sale_date:saleDate,product_name:title,quantity:qty,size,unit_price:total/qty,sale_total:total,buyer:receipt.name||receipt.buyer_email||null,source_url:sourceUrl||existing?.source_url||null,archived:false,...costs};
       if (existing) { await base44.asServiceRole.entities.Order.update(existing.id,payload); Object.assign(existing,payload); updated++; }
       else { const made=await base44.asServiceRole.entities.Order.create({...payload,created_by_id:ownerId}); target.push(made); created++; }
     }
