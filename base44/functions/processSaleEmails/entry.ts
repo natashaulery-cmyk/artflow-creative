@@ -409,6 +409,7 @@ export default async function(req) {
           item.status === 'error' &&
           (!item.business_id || item.business_id === businessId) &&
           /limit of integrations|rate limit/i.test(String(item.details || '')) &&
+          Number(item.parser_version || 0) === PARSER_VERSION &&
           Date.now() - new Date(item.updated_date || item.created_date || 0).getTime() < quotaCooldownMs
         )
         .map((item) => item.message_id)
