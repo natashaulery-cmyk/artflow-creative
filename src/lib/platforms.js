@@ -19,3 +19,17 @@ export const PLATFORM_BAR = {
   Etsy: "bg-violet-400",
   "Stan Store": "bg-violet-500",
 };
+
+// Older imports may contain a retired connector name. Keep those orders, but
+// never expose that retired connector as a marketplace in the current UI.
+export function displayPlatform(value) {
+  const raw = String(value || "").trim();
+  if (/^fluf(?:_|[\s-]|$)/i.test(raw)) return "Marketplace";
+  return raw || "Marketplace";
+}
+
+export function displayProductName(order) {
+  const name = String(order?.product_name || "").trim();
+  if (/^fluf sale$/i.test(name)) return `${displayPlatform(order?.platform)} sale`;
+  return name || `${displayPlatform(order?.platform)} sale`;
+}
