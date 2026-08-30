@@ -279,7 +279,7 @@ function dateValue(value) {
 
 function platformLabel(value) {
   const raw = String(value || 'Other').trim();
-  const key = raw.toLowerCase();
+  const key = raw.toLowerCase().replace(/[\s-]+/g, '_');
   const labels = {
     vinted: 'Vinted',
     depop: 'Depop',
@@ -293,10 +293,54 @@ function platformLabel(value) {
     whatnot: 'Whatnot',
     grailed: 'Grailed',
     vestiaire: 'Vestiaire Collective',
+    vestiaire_collective: 'Vestiaire Collective',
     wallapop: 'Wallapop',
     temu: 'Temu',
   };
   return labels[key] || raw || 'Other';
+}
+
+function marketplaceCandidate(value) {
+  if (value && typeof value === 'object') {
+    return first(value.slug, value.key, value.code, value.name, value.title, value.id);
+  }
+  return value;
+}
+
+function resolveMarketplace(order) {
+  const candidates = [
+    order.marketplace_name,
+    order.marketplaceName,
+    order.source_marketplace,
+    order.sourceMarketplace,
+    order.original_marketplace,
+    order.originalMarketplace,
+    order.channel_name,
+    order.channelName,
+    order.source_channel,
+    order.sourceChannel,
+    order.marketplace,
+    order.channel,
+    order.source,
+    order.store,
+    order.platform_name,
+    order.platformName,
+    order.platform,
+    order.shop?.marketplace,
+    order.shop?.channel,
+    order.connection?.marketplace,
+    order.connection?.channel,
+  ];
+
+  for (const candidate of candidates) {
+    const value = marketplaceCandidate(candidate);
+    if (value === null || value === undefined || value === '') continue;
+    const key = String(value).trim().toLowerCase().replace(/[\s-]+/g, '_');
+    // FLUF's own internal product/order store is not the marketplace where the sale happened.
+    if (key === 'fluf' || key === 'fluf_db' || key === 'fluf_connect') continue;
+    return platformLabel(value);
+  }
+  return 'FLUF';
 }
 
 function itemList(order) {
@@ -317,7 +361,7 @@ function normalizeOrder(order, userEmail) {
     order.external_id,
     order.externalId
   ) || crypto.randomUUID());
-  const platform = platformLabel(first(order.platform, order.channel, order.marketplace, order.source, order.store));
+  const platform = resolveMarketplace(order);
   const quantity = Math.max(1, items.length
     ? items.reduce((sum, item) => sum + Math.max(1, numberValue(first(item.quantity, item.qty, 1))), 0)
     : numberValue(first(order.quantity, order.qty, 1)) || 1);
@@ -444,6 +488,20 @@ async function activeBusinessId(client, session) {
 }
 
 async function upsertOrder(client, normalized, session, businessId) {
+  // Repair orders imported by the first FLUF integration, which could label the
+  // original marketplace as "FLUF". Reuse that row instead of creating a duplicate.
+  const legacy = await client.query(
+    `SELECT base44_id
+       FROM artflow.orders
+      WHERE sync_source='fluf'
+        AND order_id=$1
+        AND lower(COALESCE(platform,'')) IN ('fluf','fluf connect','fluf_db')
+      ORDER BY created_date DESC NULLS LAST
+      LIMIT 1`,
+    [normalized.orderId]
+  );
+  const targetId = legacy.rows[0]?.base44_id || normalized.base44Id;
+
   const result = await client.query(
     `INSERT INTO artflow.orders (
        base44_id, created_by_id, created_date, updated_date, sale_date, platform,
@@ -464,7 +522,7 @@ async function upsertOrder(client, normalized, session, businessId) {
        data=COALESCE(artflow.orders.data, '{}'::jsonb) || EXCLUDED.data
      RETURNING (xmax = 0) AS inserted`,
     [
-      normalized.base44Id,
+      targetId,
       session.user.id,
       normalized.saleDate,
       normalized.platform,
