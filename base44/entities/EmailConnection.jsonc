@@ -1,0 +1,88 @@
+{
+  "name": "EmailConnection",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "Gmail",
+        "Outlook",
+        "Yahoo"
+      ]
+    },
+    "email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "disconnected",
+        "error"
+      ]
+    },
+    "use_for_sales": {
+      "type": "boolean",
+      "default": true
+    },
+    "use_for_expenses": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_sales_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_expense_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id",
+    "provider",
+    "email",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.owner_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.owner_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.owner_id": "{{user.id}}"
+        },
+        {
+          "data.business_id": "{{user.data.active_business_id}}"
+        }
+      ]
+    }
+  }
+}
