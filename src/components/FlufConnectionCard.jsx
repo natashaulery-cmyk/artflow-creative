@@ -11,6 +11,7 @@ export default function FlufConnectionCard() {
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [enablingWebhook, setEnablingWebhook] = useState(false);
 
   const loadStatus = async () => {
     try {
@@ -90,6 +91,26 @@ export default function FlufConnectionCard() {
     }
   };
 
+  const enableWebhook = async () => {
+    setEnablingWebhook(true);
+    try {
+      const res = await fetch("/api/fluf?op=enable-webhook", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not enable real-time FLUF sales");
+      toast.success("Real-time FLUF sales enabled");
+      await loadStatus();
+    } catch (error) {
+      toast.error("Could not enable real-time sales", { description: error?.message });
+    } finally {
+      setEnablingWebhook(false);
+    }
+  };
+
   const disconnect = async () => {
     setDisconnecting(true);
     try {
@@ -141,12 +162,27 @@ export default function FlufConnectionCard() {
           <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 p-4">
             <p className="text-sm font-semibold">Connected</p>
             <p className="text-xs text-muted-foreground mt-1">
+              {status.webhook_active
+                ? `Real-time sales active${status.last_webhook_at ? ` · Last event ${new Date(status.last_webhook_at).toLocaleString()}` : ""}`
+                : "Manual sales sync is active. Real-time sales are not enabled yet."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
               {status.last_sync_at
-                ? `Last synced ${new Date(status.last_sync_at).toLocaleString()}`
-                : "Ready for the first sales sync."}
+                ? `Last full sync ${new Date(status.last_sync_at).toLocaleString()}`
+                : "Ready for the first full sales sync."}
             </p>
             {status.last_error ? <p className="text-xs text-destructive mt-2">{status.last_error}</p> : null}
           </div>
+          {!status.webhook_active ? (
+            <button
+              onClick={enableWebhook}
+              disabled={enablingWebhook}
+              className="w-full h-12 rounded-2xl bg-emerald-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {enablingWebhook ? "Enabling real-time sales…" : "Enable Real-Time Sales"}
+            </button>
+          ) : null}
           <button
             onClick={() => sync(false)}
             disabled={syncing}
