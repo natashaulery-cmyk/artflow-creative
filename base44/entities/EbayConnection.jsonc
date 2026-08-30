@@ -43,6 +43,9 @@
     "notification_subscription_id": {
       "type": "string"
     },
+    "verification_token": {
+      "type": "string"
+    },
     "last_error": {
       "type": "string"
     }
