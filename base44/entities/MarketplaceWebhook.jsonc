@@ -1,0 +1,78 @@
+{
+  "name": "MarketplaceWebhook",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": [
+        "Vinted",
+        "Depop",
+        "Etsy"
+      ]
+    },
+    "business_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "access_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "callback_key": {
+      "type": "string"
+    },
+    "provider_webhook_id": {
+      "type": "string"
+    },
+    "signing_secret": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "event_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "last_event_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "business_id",
+    "callback_key"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
