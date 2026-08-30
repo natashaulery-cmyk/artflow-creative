@@ -6,8 +6,13 @@ export async function getOutlookConnection(base44) {
     return base44.asServiceRole.connectors.getCurrentAppUserConnection(connectorId);
   }
 
-  // Builder-only compatibility path. Production apps should set
-  // OUTLOOK_USER_CONNECTOR_ID so each signed-in user authorizes their own inbox.
+  // Builder-only compatibility path. Never expose the builder's shared Outlook
+  // token to ordinary app users; production should set OUTLOOK_USER_CONNECTOR_ID
+  // so each user authorizes their own mailbox.
+  const user = await base44.auth.me().catch(() => null);
+  if (user?.role !== 'admin') {
+    throw new Error('Connect your own Microsoft account in Account before syncing Outlook mail.');
+  }
   return base44.asServiceRole.connectors.getConnection('outlook');
 }
 
