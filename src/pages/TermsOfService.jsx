@@ -8,7 +8,7 @@ export default function TermsOfService() {
         <div className="mb-8">
           <Link to="/login" className="text-sm text-primary hover:underline">Art Flow Creative</Link>
           <h1 className="mt-3 text-3xl font-bold tracking-tight">Terms of Service</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Effective date: August 29, 2026</p>
+          <p className="mt-2 text-sm text-muted-foreground">Effective date: August 30, 2026</p>
         </div>
 
         <div className="space-y-7 text-sm leading-7">
@@ -35,7 +35,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-xl font-semibold mb-2">Connected services</h2>
             <p>
-              Art Flow Creative may allow you to connect Gmail for email-based sales and expense importing. Connecting a service is optional. When you authorize a connection, you permit Art Flow Creative to access only the permissions requested for the feature you choose to use. Third-party services are also governed by their own terms and policies.
+              Art Flow Creative may allow you to connect Gmail for email-based sales and expense importing and FLUF Connect for marketplace order importing. Connecting a service is optional. When you authorize a connection or provide an API token, you permit Art Flow Creative to access only the data needed for the feature you choose to use. Third-party services, including FLUF and the marketplaces connected through it, are also governed by their own terms and policies.
             </p>
           </section>
 
