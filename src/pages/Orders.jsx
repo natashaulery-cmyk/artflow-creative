@@ -79,7 +79,29 @@ export default function Orders() {
         pass += 1;
       }
 
-      toast.success(data.message || directMessages.at(-1) || "All available sales are synced");
+      const emailMessages = [];
+      if (data.message) emailMessages.push(data.message);
+
+      // Microsoft/Outlook is an independent per-user inbox. If it is not
+      // connected yet, its failure is non-blocking and Gmail/direct APIs still
+      // complete normally.
+      try {
+        let outlookRes = await base44.functions.invoke("processOutlookSaleEmails", {});
+        let outlookData = outlookRes?.data || {};
+        let outlookPass = 0;
+        while (Number(outlookData.remaining || 0) > 0 && outlookPass < 12) {
+          await reloadOrders();
+          await new Promise((resolve) => window.setTimeout(resolve, 350));
+          outlookRes = await base44.functions.invoke("processOutlookSaleEmails", {});
+          outlookData = outlookRes?.data || {};
+          outlookPass += 1;
+        }
+        if (outlookData.message) emailMessages.push(outlookData.message);
+      } catch {
+        // Not connected is expected for users who only use Gmail.
+      }
+
+      toast.success(emailMessages.at(-1) || directMessages.at(-1) || "All available sales are synced");
       await reloadOrders();
     } catch (e) {
       toast.error("Sales sync failed", { description: e?.response?.data?.error || e?.message });
