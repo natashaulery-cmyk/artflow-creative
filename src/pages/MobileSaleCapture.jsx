@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { ArrowLeft, ClipboardPaste, Send, Smartphone, CheckCircle2, Sparkles } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { artflowAuthClient } from "@/lib/artflowAuthClient";
+import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -63,6 +65,11 @@ const findBuyer = (value = "") => {
     if (match) return clean(match[1]).replace(/^@/, "");
   }
   return "";
+};
+
+const findSize = (value = "") => {
+  const match = String(value || "").match(/\b(\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?)\b/i);
+  return match ? match[1].replace(/\s+/g, "").replace("×", "x") : "";
 };
 
 const findQuantity = (value = "") => {
@@ -138,12 +145,14 @@ const parseDetails = ({ text = "", url = "", title = "" }) => {
     orderId: findOrderId(combined),
     buyer: findBuyer(combined),
     quantity: findQuantity(combined),
+    size: findSize(combined),
     saleDate: findDate(combined) || today(),
   };
 };
 
 export default function MobileSaleCapture() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [params] = useSearchParams();
   const incomingUrl = params.get("url") || "";
   const incomingText = params.get("text") || "";
@@ -158,9 +167,11 @@ export default function MobileSaleCapture() {
   const [orderId, setOrderId] = useState(initial.orderId);
   const [buyer, setBuyer] = useState(initial.buyer);
   const [quantity, setQuantity] = useState(initial.quantity);
+  const [size, setSize] = useState(initial.size);
   const [saleDate, setSaleDate] = useState(initial.saleDate);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [googleNeeded, setGoogleNeeded] = useState(false);
 
   const canSave = useMemo(() => !!platform && !!productName.trim() && Number(saleTotal) > 0 && !saving, [platform, productName, saleTotal, saving]);
 
@@ -174,6 +185,7 @@ export default function MobileSaleCapture() {
     if (parsed.orderId) setOrderId(parsed.orderId);
     if (parsed.buyer) setBuyer(parsed.buyer);
     if (parsed.quantity) setQuantity(parsed.quantity);
+    if (parsed.size) setSize(parsed.size);
     if (parsed.saleDate) setSaleDate(parsed.saleDate);
     return parsed;
   };
@@ -189,32 +201,73 @@ export default function MobileSaleCapture() {
     }
   };
 
+  const connectGoogleSheets = async () => {
+    try {
+      const result = await artflowAuthClient.linkSocial({
+        provider: "google",
+        callbackURL: `${window.location.origin}/send-sale`,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+        additionalParams: {
+          access_type: "offline",
+          include_granted_scopes: "true",
+          prompt: "consent",
+        },
+      });
+      if (result?.error) throw new Error(result.error.message || "Could not connect Google");
+      if (result?.data?.url) window.location.assign(result.data.url);
+    } catch (error) {
+      toast.error("Could not connect Google Sheets", { description: error?.message });
+    }
+  };
+
   const save = async (event) => {
     event.preventDefault();
     if (!canSave) return;
     setSaving(true);
     setSaved(false);
-    try {
-      const response = await base44.functions.invoke("mobileOrderCapture", {
-        platform,
-        source_url: sourceUrl,
-        pasted_text: pastedText,
-        product_name: productName,
-        sale_total: Number(saleTotal),
-        order_id: orderId,
-        buyer,
-        quantity: Number(quantity) || 1,
-        sale_date: saleDate,
-      });
-      const data = response?.data || {};
-      if (data?.error) throw new Error(data.error);
+    setGoogleNeeded(false);
+    const payload = {
+      platform,
+      source_url: sourceUrl,
+      pasted_text: pastedText,
+      product_name: productName,
+      sale_total: Number(saleTotal),
+      order_id: orderId,
+      buyer,
+      quantity: Number(quantity) || 1,
+      size,
+      sale_date: saleDate,
+    };
 
-      await base44.functions.invoke("importFromSheets", { mode: "orders", sheetName: "Orders" }).catch(() => null);
+    try {
+      let data = {};
+      if (user?.auth_backend === "neon") {
+        const response = await fetch("/api/mobile-sale", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const err = new Error(data.error || "Could not send sale");
+          err.code = data.code;
+          throw err;
+        }
+      } else {
+        // Temporary compatibility path while remaining accounts migrate from Base44.
+        const response = await base44.functions.invoke("mobileOrderCapture", payload);
+        data = response?.data || {};
+        if (data?.error) throw new Error(data.error);
+        await base44.functions.invoke("importFromSheets", { mode: "orders", sheetName: "Orders" }).catch(() => null);
+      }
+
       window.dispatchEvent(new CustomEvent("artflow:data-synced", { detail: { source: "mobile_sale_capture" } }));
       setSaved(true);
       toast.success(data.message || "Sale sent to Art Flow");
     } catch (error) {
-      toast.error("Could not send sale", { description: error?.response?.data?.error || error?.message });
+      if (["GOOGLE_NOT_LINKED", "GOOGLE_RECONNECT"].includes(error?.code)) setGoogleNeeded(true);
+      toast.error("Could not send sale", { description: error?.message });
     } finally {
       setSaving(false);
     }
