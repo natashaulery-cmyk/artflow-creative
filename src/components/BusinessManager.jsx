@@ -146,7 +146,6 @@ export default function BusinessManager() {
   const expenseEmails = Array.from(
     new Set([
       ...(business.expense_emails || []),
-      ...(business.sales_emails || []),
       business.primary_email,
     ].map(normalizeEmail).filter(Boolean))
   );
@@ -232,17 +231,49 @@ export default function BusinessManager() {
       <div>
         <div className="flex items-center gap-2 mb-2">
           <Link2 className="w-4 h-4 text-[hsl(var(--primary))]" />
-          <p className="text-sm font-semibold">Expense emails</p>
+          <p className="text-sm font-semibold">Expense email addresses</p>
         </div>
-        <div className="space-y-2">
-          {expenseEmails.map((email) => (
-            <div key={email} className="rounded-2xl bg-muted px-4 py-3 text-sm">
-              <p className="font-medium truncate">{email}</p>
-            </div>
-          ))}
+        <div className="space-y-2 mb-3">
+          {expenseEmails.map((email) => {
+            const isPrimary = normalizeEmail(email) === normalizeEmail(business.primary_email || user?.email);
+            return (
+              <div key={email} className="rounded-2xl bg-muted px-4 py-3 text-sm flex items-center justify-between gap-2">
+                <p className="font-medium truncate">{email}</p>
+                {!isPrimary && (
+                  <button
+                    onClick={() => removeExpenseEmail(email)}
+                    disabled={saving}
+                    className="w-8 h-8 rounded-full bg-background flex items-center justify-center shrink-0 disabled:opacity-50"
+                    aria-label={`Remove ${email}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={newExpenseEmail}
+            onChange={(e) => setNewExpenseEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addExpenseEmail()}
+            placeholder="Email used to order supplies"
+            inputMode="email"
+            autoCapitalize="none"
+            className="form-input flex-1"
+          />
+          <button
+            onClick={addExpenseEmail}
+            disabled={saving || !newExpenseEmail.trim()}
+            className="w-14 h-14 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center shrink-0 disabled:opacity-50"
+            aria-label="Add expense email address"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Receipts, invoices, supplies, software, equipment, shipping, and other qualifying business purchases can be pulled from these inboxes too.
+          Save the email addresses you use when buying supplies, equipment, software, postage, packaging, and other business expenses. This only saves the address; it does not connect or read that inbox.
         </p>
       </div>
 
