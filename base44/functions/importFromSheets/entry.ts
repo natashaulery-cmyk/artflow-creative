@@ -163,26 +163,62 @@ export default async function(req) {
     const existing = allExisting.filter((order) =>
       order.business_id === businessId || (!order.business_id && order.created_by_id === ownerId)
     );
-    const dupKey = (p, oid, pn) => `${p}|${oid || ''}|${pn}`;
-    const seen = new Set(existing.map((o) => dupKey(o.platform, o.order_id, o.product_name)));
-
+    const normalizeProduct = (value = '') => String(value || '')
+      .toLowerCase()
+      .replace(/\b\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\b/g, ' ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const parseMoney = (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const cleaned = String(value).replace(/[$,%]/g, '').replace(/,/g, '').trim();
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : null;
+    };
     const normalizeDate = (v) => {
-      if (!v) return new Date().toISOString().slice(0, 10);
+      if (!v) return null;
       const s = String(v).trim();
       const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if (m) return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+      if (m) {
+        const first = Number(m[1]);
+        const second = Number(m[2]);
+        const dayFirst = first > 12;
+        const month = dayFirst ? second : first;
+        const day = dayFirst ? first : second;
+        if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+        return `${m[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
       const d = new Date(s);
-      if (isNaN(d)) return new Date().toISOString().slice(0, 10);
+      if (Number.isNaN(d.getTime())) return null;
       return d.toISOString().slice(0, 10);
     };
+    const fingerprint = (platform, date, product, total) =>
+      `${platform}|${date || ''}|${Number(total || 0).toFixed(2)}|${normalizeProduct(product)}`;
+    const existingByFingerprint = new Map();
+    for (const order of existing) {
+      if (order.archived) continue;
+      existingByFingerprint.set(
+        fingerprint(order.platform, order.sale_date, order.product_name, order.sale_total),
+        order
+      );
+    }
+    const usedExistingIds = new Set();
+    const seenSheetRows = new Set();
 
     let skipped = 0;
     const toCreate = [];
+    const toUpdate = [];
 
     for (let r = headerRowIndex + 1; r < rows.length; r++) {
-      const row = rows[r];
+      const row = rows[r] || [];
       const product = idx.product >= 0 ? row[idx.product] : null;
       if (!product) continue;
+
+      if (idx.sold >= 0) {
+        const soldValue = String(row[idx.sold] ?? '').trim().toLowerCase();
+        if (soldValue && !['true', 'yes', 'y', '1', 'sold'].includes(soldValue)) continue;
+      }
+
       const platformRaw = String(idx.platform >= 0 ? row[idx.platform] || '' : '').trim();
       const platform = /vinted/i.test(platformRaw) ? 'Vinted'
         : /depop/i.test(platformRaw) ? 'Depop'
@@ -193,41 +229,74 @@ export default async function(req) {
         skipped++;
         continue;
       }
-      const size = String(idx.size >= 0 ? row[idx.size] || '5x7' : '5x7').trim();
-      const quantity = Number(idx.quantity >= 0 ? row[idx.quantity] : 1) || 1;
-      const priceRaw = String(idx.price >= 0 ? row[idx.price] || '' : '').replace(/[^0-9.]/g, '');
-      const unit_price = Number(priceRaw) || 0;
-      const sale_date = normalizeDate(idx.date >= 0 ? row[idx.date] : null);
-      const order_id = idx.orderId >= 0 && row[idx.orderId] ? String(row[idx.orderId]) : null;
-      const buyer = idx.buyer >= 0 && row[idx.buyer] ? String(row[idx.buyer]) : null;
 
-      const key = dupKey(platform, order_id, String(product));
-      if (seen.has(key)) {
-        skipped++;
-        continue;
-      }
+      const productText = String(product).trim();
+      const sizeFromProduct = productText.match(/\b\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\b/i)?.[0]?.replace(/\s+/g, '') || '';
+      const size = String(idx.size >= 0 ? row[idx.size] || sizeFromProduct || 'Other' : sizeFromProduct || 'Other').trim();
+      const bundleQty = Number(productText.match(/bundle(?:\s+of)?\s+(\d+)/i)?.[1] || 0);
+      const quantity = Number(idx.quantity >= 0 ? row[idx.quantity] : bundleQty || 1) || 1;
+      const grossSale = parseMoney(idx.price >= 0 ? row[idx.price] : null) || 0;
+      if (!(grossSale > 0)) continue;
+      const unit_price = +(grossSale / Math.max(1, quantity)).toFixed(8);
+      const sale_date = normalizeDate(idx.date >= 0 ? row[idx.date] : null);
+      if (!sale_date) continue;
+      const order_id = idx.orderId >= 0 && row[idx.orderId] ? String(row[idx.orderId]).trim() : null;
+      const buyer = idx.buyer >= 0 && row[idx.buyer] ? String(row[idx.buyer]) : null;
 
       const inv = inventoryCosts.find((i) => i.size === size);
       let costs = calculateOrderCosts({ quantity, size, unit_price }, inv);
-      const costRaw =
-        idx.cost >= 0 ? String(row[idx.cost] || '').replace(/[^0-9.]/g, '') : '';
-      if (idx.cost >= 0 && costRaw && Number(costRaw) > 0) {
-        const manualCost = Number(costRaw);
+      const purchaseCost = parseMoney(idx.cost >= 0 ? row[idx.cost] : null);
+      const fees = parseMoney(idx.fees >= 0 ? row[idx.fees] : null) || 0;
+      const shipping = parseMoney(idx.shipping >= 0 ? row[idx.shipping] : null) || 0;
+      const sheetProfit = parseMoney(idx.profit >= 0 ? row[idx.profit] : null);
+      if (sheetProfit !== null) {
+        const totalCost = Math.max(0, +(grossSale - sheetProfit).toFixed(2));
+        const baseItemCost = Math.max(0, purchaseCost || 0);
         costs = {
           ...costs,
-          base_item_cost: 0,
+          sale_total: +grossSale.toFixed(2),
+          base_item_cost: +baseItemCost.toFixed(2),
           paper_ink_cost: 0,
-          packaging_cost: 0,
-          total_cost: manualCost,
-          estimated_profit: +(costs.sale_total - manualCost).toFixed(2),
+          packaging_cost: +Math.max(0, totalCost - baseItemCost).toFixed(2),
+          total_cost: totalCost,
+          estimated_profit: +sheetProfit.toFixed(2),
+        };
+      } else if (purchaseCost !== null || fees || shipping) {
+        const totalCost = Math.max(0, +((purchaseCost || 0) + fees + shipping).toFixed(2));
+        costs = {
+          ...costs,
+          sale_total: +grossSale.toFixed(2),
+          base_item_cost: +(purchaseCost || 0).toFixed(2),
+          paper_ink_cost: 0,
+          packaging_cost: +(fees + shipping).toFixed(2),
+          total_cost: totalCost,
+          estimated_profit: +(grossSale - totalCost).toFixed(2),
         };
       }
 
-      toCreate.push({
+      const rowFingerprint = fingerprint(platform, sale_date, productText, costs.sale_total);
+      if (seenSheetRows.has(rowFingerprint)) {
+        skipped++;
+        continue;
+      }
+      seenSheetRows.add(rowFingerprint);
+
+      let match = existingByFingerprint.get(rowFingerprint) || null;
+      if (!match) {
+        const normalizedProduct = normalizeProduct(productText);
+        match = existing.find((order) => {
+          if (order.archived || usedExistingIds.has(order.id)) return false;
+          if (order.platform !== platform || order.sale_date !== sale_date) return false;
+          if (Math.abs(Number(order.sale_total || 0) - Number(costs.sale_total || 0)) > 0.011) return false;
+          const existingProduct = normalizeProduct(order.product_name);
+          return existingProduct === normalizedProduct || existingProduct.includes(normalizedProduct) || normalizedProduct.includes(existingProduct);
+        }) || null;
+      }
+
+      const sheetValues = {
         sale_date,
         platform,
-        order_id,
-        product_name: String(product),
+        product_name: productText,
         quantity,
         size,
         unit_price,
@@ -236,10 +305,17 @@ export default async function(req) {
         business_id: businessId,
         access_emails: accessEmails,
         created_by_id: ownerId,
-        sync_source: 'google_sheet_fallback',
+        sync_source: 'google_sheet_master',
         archived: false,
-      });
-      seen.add(key);
+      };
+      if (order_id) sheetValues.order_id = order_id;
+
+      if (match?.id) {
+        usedExistingIds.add(match.id);
+        toUpdate.push({ id: match.id, data: sheetValues });
+      } else {
+        toCreate.push({ ...sheetValues, order_id });
+      }
     }
 
     let imported = 0;
@@ -249,9 +325,20 @@ export default async function(req) {
       imported += batch.length;
     }
 
+    let updated = 0;
+    for (let i = 0; i < toUpdate.length; i += 25) {
+      const batch = toUpdate.slice(i, i + 25);
+      const results = await Promise.allSettled(
+        batch.map(({ id, data }) => base44.asServiceRole.entities.Order.update(id, data))
+      );
+      updated += results.filter((result) => result.status === 'fulfilled').length;
+    }
+
     return Response.json({
       imported,
+      updated,
       skipped,
+      sheet: resolvedSheetName,
       total: rows.length - headerRowIndex - 1,
     });
   } catch (error) {
