@@ -20,35 +20,34 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      let neonError = null;
-
-      // Try the newer Neon/Better Auth login when its API is available.
-      // On the Base44-hosted custom domain, /api/auth may be served by the SPA
-      // instead of the Vercel auth function, so any transport/parse failure must
-      // fall through to the Base44 login rather than blocking sign-in entirely.
-      try {
-        const result = await artflowAuthClient.signIn.email({
-          email: email.trim(),
-          password,
-          rememberMe: true,
-        });
-        neonError = result?.error || null;
-        if (!neonError) {
-          window.location.href = returnTo;
-          return;
-        }
-      } catch (error) {
-        neonError = error;
-      }
-
-      // Compatibility login for the currently published Base44-hosted domain.
+      // Use the Base44-backed Art Flow session first because the live spreadsheet,
+      // Gmail/Outlook, and business-workspace sync functions are currently tied
+      // to that authenticated session. Neon stays available as a compatibility
+      // fallback while the remaining server APIs are migrated.
       try {
         const { base44 } = await import("@/api/base44Client");
         await base44.auth.loginViaEmailPassword(email.trim(), password);
         window.location.href = returnTo;
         return;
-      } catch {
-        throw new Error(neonError?.message || "Email or password is incorrect.");
+      } catch (base44Error) {
+        let neonError = null;
+        try {
+          const result = await artflowAuthClient.signIn.email({
+            email: email.trim(),
+            password,
+            rememberMe: true,
+          });
+          neonError = result?.error || null;
+          if (!neonError) {
+            window.location.href = returnTo;
+            return;
+          }
+        } catch (error) {
+          neonError = error;
+        }
+        throw new Error(
+          neonError?.message || base44Error?.message || "Email or password is incorrect."
+        );
       }
     } catch (err) {
       setError(err?.message || "Could not sign in. Check your email and password.");
