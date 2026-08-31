@@ -10,28 +10,11 @@ const vercelDeploymentURL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "";
 const canonicalProductionURL = "https://artflowcreativeapp.com";
-const baseURL = process.env.BETTER_AUTH_URL || (process.env.VERCEL_ENV === "production"
-  ? canonicalProductionURL
-  : vercelDeploymentURL || vercelProductionURL || canonicalProductionURL);
-
-const socialProviders = {};
-
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  socialProviders.google = {
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  };
-}
-
-if (
-  process.env.APPLE_CLIENT_ID &&
-  process.env.APPLE_CLIENT_SECRET
-) {
-  socialProviders.apple = {
-    clientId: process.env.APPLE_CLIENT_ID,
-    clientSecret: process.env.APPLE_CLIENT_SECRET,
-  };
-}
+const baseURL = process.env.BETTER_AUTH_URL || (
+  process.env.VERCEL_ENV === "production"
+    ? canonicalProductionURL
+    : vercelDeploymentURL || vercelProductionURL || canonicalProductionURL
+);
 
 export const auth = betterAuth({
   appName: "Art Flow Creative",
@@ -48,20 +31,17 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: ["google", "apple", "email-password"],
+      trustedProviders: ["email-password"],
       allowDifferentEmails: false,
     },
   },
-  socialProviders,
+  socialProviders: {},
   trustedOrigins: [
     baseURL,
     vercelProductionURL,
     vercelDeploymentURL,
-    "https://affordable-art-co-dashboard.vercel.app",
-    "https://affordable-art-co-dashboard-art-fed4.vercel.app",
     "https://artflowcreativeapp.com",
     "https://www.artflowcreativeapp.com",
-    "https://appleid.apple.com",
   ].filter(Boolean),
 });
 
