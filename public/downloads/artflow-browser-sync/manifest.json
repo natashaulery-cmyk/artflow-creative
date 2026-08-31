@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Art Flow Browser Sync",
+  "version": "1.0.0",
+  "description": "Send Vinted and Depop sold-order details to your ArtFlow Creative Tracker without sharing marketplace passwords or login tokens.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://base44.app/*",
+    "https://*.vinted.com/*",
+    "https://*.depop.com/*"
+  ],
+  "action": {
+    "default_title": "Art Flow Browser Sync",
+    "default_popup": "popup.html"
+  }
+}
