@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 import { getGoogleSheetsAccessToken } from '../../shared/sheetsConnector.js';
+import { appendExpensesToMasterSheet } from '../../shared/spreadsheetMaster.js';
 
 const decodeBytes = (value = '') => {
   const clean = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -190,6 +191,7 @@ export default async function(req) {
     let created = 0;
     let skipped = 0;
     let errors = 0;
+    const createdForSheet = [];
 
     const historyByMessage = new Map();
     for (const item of importHistory) {
@@ -321,7 +323,7 @@ export default async function(req) {
         const deductiblePercent = Math.min(100, Math.max(0, Number(expense.deductible_percent) || 100));
         const category = categories.includes(expense.category) ? expense.category : 'Other Business Expense';
 
-        await base44.asServiceRole.entities.Expense.create({
+        const createdExpense = await base44.asServiceRole.entities.Expense.create({
           business_id: businessId,
           access_emails: accessEmails,
           date,
@@ -338,6 +340,7 @@ export default async function(req) {
           confidence,
           created_by_id: ownerId,
         });
+        createdForSheet.push(createdExpense);
         seen.add(receiptId);
         created++;
         messageCreated++;
@@ -345,8 +348,24 @@ export default async function(req) {
       await recordHistory(id, messageCreated ? 'imported' : 'skipped', messageCreated ? `Imported ${messageCreated} art-business expense(s)` : 'No qualifying art-business expense found');
     }
 
-    // Google Sheets is the final expense safety net for the current production
-    // UI as well as the newer Expenses screen. It only adds rows not already in
+    // Email is the primary source, but the spreadsheet is the durable master
+    // record. Persist every newly discovered Gmail expense into the shared
+    // Expenses tab before reconciliation brings any missing spreadsheet rows
+    // back into the app.
+    let emailSheetAppended = 0;
+    try {
+      if (createdForSheet.length) {
+        const writeResult = await appendExpensesToMasterSheet(base44, workspace, createdForSheet);
+        emailSheetAppended = Number(writeResult?.appended || 0);
+      }
+    } catch {
+      // A temporary Sheets outage must not lose an email-discovered expense;
+      // the app record remains available and the next sync will retry through
+      // normal spreadsheet reconciliation.
+    }
+
+    // Google Sheets is the final expense reconciliation source for the current
+    // production UI as well as the newer Expenses screen. It only adds rows not already in
     // the business database, using both receipt IDs and a date/amount/description
     // fingerprint to prevent the spreadsheet from double-counting email imports.
     let spreadsheetCreated = 0;
@@ -483,6 +502,7 @@ export default async function(req) {
       processed: batch.length,
       created,
       migrated,
+      email_sheet_appended: emailSheetAppended,
       spreadsheet_created: spreadsheetCreated,
       spreadsheet_skipped: spreadsheetSkipped,
       remaining,
