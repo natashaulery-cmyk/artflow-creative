@@ -1,4 +1,5 @@
 import pg from 'pg';
+import crypto from 'node:crypto';
 import { auth } from './auth/_auth.mjs';
 import { fromNodeHeaders } from 'better-auth/node';
 
@@ -44,9 +45,25 @@ async function getBusiness(client, profile, user) {
   const active = profile?.active_business_id || profile?.data?.active_business_id || null;
   const email = normalize(user?.email);
   const result = await client.query(`SELECT base44_id, name, primary_email, data FROM artflow.businesses ORDER BY name NULLS LAST`);
-  return result.rows.find((row) => active && row.base44_id === active)
+  const existing = result.rows.find((row) => active && row.base44_id === active)
     || result.rows.find((row) => email && businessEmails(row).includes(email))
     || null;
+  if (existing) return existing;
+
+  const id = crypto.randomUUID();
+  const name = `${String(user?.name || 'My').trim() || 'My'} Art Business`;
+  const data = {
+    primary_email: user.email,
+    member_emails: [user.email],
+    sales_emails: [user.email],
+    expense_emails: [user.email],
+    tracked_marketplaces: [],
+  };
+  await client.query(
+    `INSERT INTO artflow.businesses (base44_id, name, primary_email, data) VALUES ($1,$2,$3,$4::jsonb)`,
+    [id, name, user.email, JSON.stringify(data)]
+  );
+  return { base44_id: id, name, primary_email: user.email, data };
 }
 
 function parseBody(req) {
