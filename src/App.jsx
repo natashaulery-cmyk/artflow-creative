@@ -7,8 +7,6 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import IndependentLogin from '@/pages/IndependentLogin';
 import IndependentRegister from '@/pages/IndependentRegister';
@@ -56,8 +54,8 @@ const AuthenticatedApp = () => {
   if (publicPath === '/login' || publicPath === '/register' || publicPath === '/forgot-password' || publicPath === '/new-login' || publicPath === '/new-register' || publicPath === '/new-auth-test' || publicPath === '/new-data-test') {
     return (
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<IndependentLogin />} />
+        <Route path="/register" element={<IndependentRegister />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/new-login" element={<IndependentLogin />} />
         <Route path="/new-register" element={<IndependentRegister />} />
@@ -139,8 +137,8 @@ function App() {
           <Router>
             <ScrollToTop />
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<IndependentLogin />} />
+              <Route path="/register" element={<IndependentRegister />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/new-login" element={<IndependentLogin />} />
               <Route path="/new-register" element={<IndependentRegister />} />
