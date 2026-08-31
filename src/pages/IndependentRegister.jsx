@@ -32,10 +32,10 @@ export default function IndependentRegister() {
         name: name.trim() || email.trim().split("@")[0],
         email: email.trim(),
         password,
-        callbackURL: `${window.location.origin}/new-auth-test`,
+        callbackURL: `${window.location.origin}/`,
       });
       if (signUpError) throw new Error(signUpError.message || "Could not create account.");
-      window.location.replace("/new-auth-test");
+      window.location.replace("/");
     } catch (err) {
       setError(err?.message || "Could not create account.");
     } finally {
@@ -47,11 +47,11 @@ export default function IndependentRegister() {
     <AuthLayout
       icon={UserPlus}
       title="Create your Art Flow account"
-      subtitle="Use email now; Google and Apple can link to the same account later"
+      subtitle="Create your Art Flow Creative email and password"
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/new-login" className="text-primary font-medium hover:underline">Log in</Link>
+          <Link to="/login" className="text-primary font-medium hover:underline">Log in</Link>
         </>
       }
     >
