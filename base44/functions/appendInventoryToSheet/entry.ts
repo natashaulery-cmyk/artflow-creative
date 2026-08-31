@@ -4,17 +4,17 @@ import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 // Inventory export. Appends a single inventory item to the spreadsheet saved
 // on the current user's account, using the app's managed Google Sheets connection.
-const SHEET_NAME = 'Inventory';
+const SHEET_NAME = 'Inventory Pricing';
 const HEADERS = [
   'Name',
   'Category',
   'Size',
   'Base Item Cost',
-  'Paper + Ink',
-  'Packaging',
+  'Paper & Ink Cost',
+  'Packaging Cost',
   'Total Unit Cost',
   'Quantity On Hand',
-  'Low-Stock Level',
+  'Low Stock Level',
   'Image URL',
 ];
 
