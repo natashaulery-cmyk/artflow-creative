@@ -9,12 +9,18 @@ import { StatCard, MiniCard, PlatformBar, EmptyRow } from "@/components/Cards";
 import LowStockAlert from "@/components/LowStockAlert";
 import PageHeader from "@/components/PageHeader";
 import SyncStatus from "@/components/SyncStatus";
-import { PLATFORMS, PLATFORM_BAR, displayPlatform, displayProductName } from "@/lib/platforms";
+import { PLATFORM_BAR, displayPlatform, displayProductName } from "@/lib/platforms";
+import { useMarketplacePreferences } from "@/lib/useMarketplacePreferences";
 
 const cardLink = "block active:scale-95 transition-transform";
 
 export default function Dashboard() {
   const { records: orders, reload: reloadOrders } = useOrders();
+  const { selected: trackedSites, configured: sitesConfigured } = useMarketplacePreferences();
+  const activeOrders = useMemo(
+    () => sitesConfigured ? orders.filter((o) => trackedSites.includes(displayPlatform(o.platform))) : [],
+    [orders, trackedSites, sitesConfigured]
+  );
   const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
   const { records: inventory } = useEntity("InventoryCost", "-created_date");
   const [taxRate] = useTaxRate();
@@ -25,7 +31,7 @@ export default function Dashboard() {
   const mk = currentMonthKey();
 
   const calc = useMemo(() => {
-    const monthOrders = orders.filter((o) => (o.sale_date || "").slice(0, 7) === mk);
+    const monthOrders = activeOrders.filter((o) => (o.sale_date || "").slice(0, 7) === mk);
     const monthExpenses = expenses.filter((e) => (e.date || "").slice(0, 7) === mk);
     const thisMonthSales = monthOrders.reduce((s, o) => s + (o.sale_total || 0), 0);
     const thisMonthProfit = monthOrders.reduce((s, o) => s + (o.estimated_profit || 0), 0);
@@ -36,17 +42,17 @@ export default function Dashboard() {
     const taxableProfit = thisMonthProfit - thisMonthDeductions;
     const taxReserve = Math.max(0, taxableProfit) * (taxRate / 100);
 
-    const platformSales = PLATFORMS.map((p) => ({
+    const platformSales = trackedSites.map((p) => ({
       platform: p,
       sales: monthOrders
         .filter((o) => o.platform === p)
         .reduce((s, o) => s + (o.sale_total || 0), 0),
     }));
 
-    const allTimeSales = orders.reduce((s, o) => s + (o.sale_total || 0), 0);
-    const itemsSold = orders.reduce((s, o) => s + (o.quantity || 0), 0);
-    const orderCosts = orders.reduce((s, o) => s + (o.total_cost || 0), 0);
-    const allTimeProfit = orders.reduce((s, o) => s + (o.estimated_profit || 0), 0);
+    const allTimeSales = activeOrders.reduce((s, o) => s + (o.sale_total || 0), 0);
+    const itemsSold = activeOrders.reduce((s, o) => s + (o.quantity || 0), 0);
+    const orderCosts = activeOrders.reduce((s, o) => s + (o.total_cost || 0), 0);
+    const allTimeProfit = activeOrders.reduce((s, o) => s + (o.estimated_profit || 0), 0);
     const allTimeDeductions = expenses.reduce((s, e) => s + (e.deductible_amount ?? ((e.amount || 0) * ((e.deductible_percent ?? 100) / 100))), 0);
     const taxableProfitAll = allTimeProfit - allTimeDeductions;
 
@@ -62,9 +68,9 @@ export default function Dashboard() {
       orderCosts,
       taxableProfitAll,
     };
-  }, [orders, expenses, mk, taxRate]);
+  }, [activeOrders, expenses, mk, taxRate, trackedSites]);
 
-  const recentOrders = orders.slice(0, 5);
+  const recentOrders = activeOrders.slice(0, 5);
   const recentExpenses = expenses.slice(0, 5);
   const maxPlatform = Math.max(...calc.platformSales.map((p) => p.sales), 1);
 
@@ -85,7 +91,7 @@ export default function Dashboard() {
         }
       />
 
-      <SyncStatus totalOrders={orders.length} />
+      <SyncStatus totalOrders={activeOrders.length} />
 
       <LowStockAlert records={inventory} />
 
@@ -126,6 +132,7 @@ export default function Dashboard() {
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-4">Sales by Platform</h2>
+        {calc.platformSales.length === 0 && <EmptyRow text="Choose your selling sites in Account" />}
         {calc.platformSales.map(({ platform, sales }) => (
           <Link to="/orders" className="block" key={platform}>
             <PlatformBar
