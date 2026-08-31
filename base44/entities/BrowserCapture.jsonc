@@ -1,0 +1,85 @@
+{
+  "name": "BrowserCapture",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "Vinted",
+        "Depop"
+      ]
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "sale_total": {
+      "type": "number"
+    },
+    "buyer": {
+      "type": "string"
+    },
+    "sale_date": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "fingerprint": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "written",
+        "error"
+      ]
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "business_id",
+    "platform",
+    "product_name",
+    "sale_total",
+    "fingerprint",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
