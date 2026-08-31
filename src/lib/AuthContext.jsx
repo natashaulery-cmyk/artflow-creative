@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { appParams } from '@/lib/app-params';
 import { artflowAuthClient } from '@/lib/artflowAuthClient';
 
 const AuthContext = createContext();
@@ -178,31 +177,8 @@ export const AuthProvider = ({ children }) => {
     setIsLoadingAuth(true);
     setAuthError(null);
 
-    // The production spreadsheet, email, and business-workspace sync functions
-    // currently use the Base44 authenticated session. Prefer it whenever a token
-    // exists so the app can immediately reconcile the connected tracker.
-    if (appParams.token) {
-      try {
-        const currentUser = await withTimeout(base44.auth.me(), 8000, 'Authentication check');
-        const businessId = await ensureBusinessWorkspace(currentUser);
-        const hydratedUser = businessId
-          ? { ...currentUser, active_business_id: businessId, data: { ...(currentUser.data || {}), active_business_id: businessId }, auth_backend: 'base44' }
-          : { ...currentUser, auth_backend: 'base44' };
-        setUser(hydratedUser);
-        setAuthBackend('base44');
-        setIsAuthenticated(true);
-        setIsLoadingAuth(false);
-        setAuthChecked(true);
-        triggerLoginSync();
-        return;
-      } catch (error) {
-        console.warn('Base44 auth check failed:', error?.message || error);
-      }
-    }
-
-    // Keep Neon/Better Auth as the fallback during migration. A Neon-only
-    // session can still open the app, but the normal production login establishes
-    // the Base44 session first so spreadsheet sync remains active.
+    // Art Flow authentication is independent from Google and Base44.
+    // Better Auth on Vercel, backed by Neon, is the only login session.
     try {
       const sessionResult = await artflowAuthClient.getSession();
       const session = sessionResult?.data || sessionResult;
@@ -261,11 +237,6 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // Continue clearing the legacy local session even if server sign-out fails.
     }
-
-    try {
-      localStorage.removeItem('base44_access_token');
-      localStorage.removeItem('token');
-    } catch {}
 
     if (shouldRedirect) {
       window.location.replace('/login?clear_access_token=true');
