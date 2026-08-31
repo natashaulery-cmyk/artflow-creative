@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 import { getGoogleSheetsAccessToken } from '../../shared/sheetsConnector.js';
+import { appendOrdersToMasterSheet } from '../../shared/spreadsheetMaster.js';
 
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 500;
@@ -559,6 +560,7 @@ export default async function(req) {
     let created = 0;
     let skipped = 0;
     let errors = 0;
+    const createdForSheet = [];
 
     const historyByMessage = new Map();
     for (const item of importHistory) {
@@ -686,6 +688,7 @@ export default async function(req) {
         });
 
         targetOrders.push(createdOrder);
+        createdForSheet.push(createdOrder);
         await recordHistory(messageId, 'imported', platform, subject);
         seenEmailIds.add(messageId);
         created++;
@@ -697,8 +700,23 @@ export default async function(req) {
       }
     }
 
-    // The shared Google Sheet is the final safety net. Run it after Gmail so it
-    // only fills sales that the direct/email sources did not already create.
+    // The spreadsheet is the durable master record. Write newly discovered
+    // Gmail marketplace sales to Orders before reconciling the sheet back into
+    // the app database.
+    let emailSheetAppended = 0;
+    try {
+      if (createdForSheet.length) {
+        const writeResult = await appendOrdersToMasterSheet(base44, workspace, createdForSheet);
+        emailSheetAppended = Number(writeResult?.appended || 0);
+      }
+    } catch {
+      // Keep the captured sale in Art Flow if Google Sheets is temporarily
+      // unavailable; a later sync can safely retry the spreadsheet write.
+    }
+
+    // The shared Google Sheet is the final reconciliation source. Run it after
+    // Gmail so it fills any rows that are present in the master tracker but not
+    // yet represented in the app.
     let spreadsheetCreated = 0;
     let spreadsheetSkipped = 0;
     try {
@@ -734,6 +752,7 @@ export default async function(req) {
       processed: batch.length,
       created,
       migrated,
+      email_sheet_appended: emailSheetAppended,
       spreadsheet_created: spreadsheetCreated,
       spreadsheet_skipped: spreadsheetSkipped,
       legacy_archived: legacyArchived,
