@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
+import { getGoogleSheetsAccessToken } from '../../shared/sheetsConnector.js';
 
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 150;
@@ -177,6 +178,178 @@ const sameSale = (a, b) => {
   if (amount(a.sale_total) !== amount(b.sale_total)) return false;
   return productSimilar(a.product_name, b.product_name);
 };
+
+const sheetNumber = (value, fallback = 0) => {
+  const n = Number(String(value ?? '').replace(/[$,%\s,]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const sheetDate = (value, fallback = '') => {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value).trim())) {
+    const serial = Number(value);
+    if (serial > 20000 && serial < 100000) {
+      return new Date(Date.UTC(1899, 11, 30) + serial * 86400000).toISOString().slice(0, 10);
+    }
+  }
+  const text = String(value).trim();
+  const us = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (us) return `${us[3]}-${String(us[1]).padStart(2, '0')}-${String(us[2]).padStart(2, '0')}`;
+  const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString().slice(0, 10);
+};
+
+async function importSpreadsheetOrderFallback({
+  base44,
+  workspace,
+  ownerId,
+  businessId,
+  accessEmails,
+  inventoryCosts,
+  targetOrders,
+  today,
+}) {
+  const spreadsheetId = String(workspace?.spreadsheetId || '').trim();
+  if (!spreadsheetId) return { created: 0, skipped: 0, available: false };
+
+  let sheetsToken;
+  try {
+    sheetsToken = await getGoogleSheetsAccessToken(base44);
+  } catch {
+    return { created: 0, skipped: 0, available: false };
+  }
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent('Orders')}!A:Z?valueRenderOption=UNFORMATTED_VALUE`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${sheetsToken}` } });
+  if (!res.ok) return { created: 0, skipped: 0, available: false };
+  const rows = (await res.json())?.values || [];
+  if (rows.length < 2) return { created: 0, skipped: 0, available: true };
+
+  const headerRow = rows.findIndex((row) =>
+    Array.isArray(row)
+    && row.some((cell) => /sale\s*date|date/i.test(String(cell || '')))
+    && row.some((cell) => /product\s*name|product|item/i.test(String(cell || '')))
+  );
+  if (headerRow < 0) return { created: 0, skipped: 0, available: true };
+
+  const headers = rows[headerRow].map((cell) => String(cell || '').trim().toLowerCase());
+  const col = (...names) => {
+    for (const name of names) {
+      const exact = headers.findIndex((header) => header === name);
+      if (exact >= 0) return exact;
+    }
+    for (const name of names) {
+      const partial = headers.findIndex((header) => header.includes(name));
+      if (partial >= 0) return partial;
+    }
+    return -1;
+  };
+  const idx = {
+    date: col('sale date', 'date'),
+    platform: col('platform', 'site'),
+    orderId: col('order id', 'order_id'),
+    product: col('product name', 'product', 'item'),
+    quantity: col('quantity', 'qty'),
+    size: col('size'),
+    unitPrice: col('unit price', 'unit_price'),
+    saleTotal: col('sale total', 'total'),
+    buyer: col('buyer', 'customer'),
+    base: col('base item cost', 'base_item_cost'),
+    paperInk: col('paper & ink', 'paper and ink', 'paper_ink'),
+    packaging: col('packaging cost', 'packaging'),
+    totalCost: col('total cost', 'total_cost'),
+  };
+
+  let created = 0;
+  let skipped = 0;
+  for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex] || [];
+    const productName = String(idx.product >= 0 ? row[idx.product] || '' : '').trim();
+    if (!productName) continue;
+
+    const platformRaw = String(idx.platform >= 0 ? row[idx.platform] || '' : '').trim();
+    const platform = /vinted/i.test(platformRaw) ? 'Vinted'
+      : /depop/i.test(platformRaw) ? 'Depop'
+      : /etsy/i.test(platformRaw) ? 'Etsy'
+      : /ebay/i.test(platformRaw) ? 'eBay'
+      : '';
+    if (!platform) {
+      skipped++;
+      continue;
+    }
+
+    const quantity = Math.max(1, sheetNumber(idx.quantity >= 0 ? row[idx.quantity] : 1, 1));
+    const unitPriceFromSheet = sheetNumber(idx.unitPrice >= 0 ? row[idx.unitPrice] : 0, 0);
+    const totalFromSheet = sheetNumber(idx.saleTotal >= 0 ? row[idx.saleTotal] : 0, 0);
+    const saleTotal = totalFromSheet > 0 ? totalFromSheet : +(unitPriceFromSheet * quantity).toFixed(2);
+    if (!(saleTotal > 0)) {
+      skipped++;
+      continue;
+    }
+    const unitPrice = unitPriceFromSheet > 0 ? unitPriceFromSheet : +(saleTotal / quantity).toFixed(2);
+    const saleDate = sheetDate(idx.date >= 0 ? row[idx.date] : '', today);
+    if (!validDate(saleDate) || saleDate < START_DATE || saleDate > today) {
+      skipped++;
+      continue;
+    }
+
+    const orderId = String(idx.orderId >= 0 ? row[idx.orderId] || '' : '').trim() || null;
+    const candidate = {
+      platform,
+      order_id: orderId,
+      product_name: productName,
+      quantity,
+      sale_date: saleDate,
+      sale_total: saleTotal,
+    };
+    if (targetOrders.some((existing) => sameSale(existing, candidate))) {
+      skipped++;
+      continue;
+    }
+
+    const size = String(idx.size >= 0 ? row[idx.size] || 'Unknown' : 'Unknown').trim() || 'Unknown';
+    const inv = inventoryCosts.find((item) => item.size === size);
+    let costs = calculateOrderCosts({ quantity, size, unit_price: unitPrice }, inv);
+    const manualTotalCost = sheetNumber(idx.totalCost >= 0 ? row[idx.totalCost] : 0, 0);
+    if (manualTotalCost > 0) {
+      const baseItemCost = sheetNumber(idx.base >= 0 ? row[idx.base] : 0, 0);
+      const paperInkCost = sheetNumber(idx.paperInk >= 0 ? row[idx.paperInk] : 0, 0);
+      const packagingCost = sheetNumber(idx.packaging >= 0 ? row[idx.packaging] : 0, 0);
+      costs = {
+        ...costs,
+        base_item_cost: baseItemCost,
+        paper_ink_cost: paperInkCost,
+        packaging_cost: packagingCost,
+        total_cost: manualTotalCost,
+        estimated_profit: +(saleTotal - manualTotalCost).toFixed(2),
+      };
+    }
+
+    const made = await base44.asServiceRole.entities.Order.create({
+      business_id: businessId,
+      access_emails: accessEmails,
+      created_by_id: ownerId,
+      sale_date: saleDate,
+      platform,
+      order_id: orderId,
+      product_name: productName,
+      quantity,
+      size,
+      unit_price: unitPrice,
+      sale_total: saleTotal,
+      buyer: String(idx.buyer >= 0 ? row[idx.buyer] || '' : '').trim() || null,
+      sync_source: 'google_sheet_fallback',
+      archived: false,
+      ...costs,
+    });
+    targetOrders.push(made);
+    created++;
+  }
+
+  return { created, skipped, available: true };
+}
 
 async function saveSyncState(base44, ownerId, businessId, data) {
   if (!businessId) return;
