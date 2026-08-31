@@ -13,6 +13,7 @@ export default function BusinessManager() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newExpenseEmail, setNewExpenseEmail] = useState("");
   const [saving, setSaving] = useState(false);
 
   const activeId = user?.active_business_id || user?.data?.active_business_id || null;
@@ -68,6 +69,55 @@ export default function BusinessManager() {
       toast.success("Google sign-in linked to this workspace");
     } catch (e) {
       toast.error("Could not link that email");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addExpenseEmail = async () => {
+    const email = normalizeEmail(newExpenseEmail);
+    if (!business?.id || !email || !/^\S+@\S+\.\S+$/.test(email)) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    const current = (business.expense_emails || []).map(normalizeEmail).filter(Boolean);
+    if (current.includes(email)) {
+      setNewExpenseEmail("");
+      toast.success("That expense email is already saved");
+      return;
+    }
+    setSaving(true);
+    try {
+      await base44.entities.Business.update(business.id, {
+        expense_emails: Array.from(new Set([...current, email])),
+      });
+      setNewExpenseEmail("");
+      await reload();
+      toast.success("Expense email address saved");
+    } catch (e) {
+      toast.error("Could not save that expense email");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeExpenseEmail = async (email) => {
+    if (!business?.id) return;
+    const primary = normalizeEmail(business.primary_email || user?.email);
+    if (normalizeEmail(email) === primary) {
+      toast.info("Your primary business email stays attached to the workspace");
+      return;
+    }
+    setSaving(true);
+    try {
+      const next = (business.expense_emails || [])
+        .map(normalizeEmail)
+        .filter((item) => item && item !== normalizeEmail(email));
+      await base44.entities.Business.update(business.id, { expense_emails: next });
+      await reload();
+      toast.success("Expense email removed");
+    } catch (e) {
+      toast.error("Could not remove that expense email");
     } finally {
       setSaving(false);
     }
