@@ -248,6 +248,14 @@ async function saveSpreadsheetId(client, business, profile, spreadsheetId) {
   }
 }
 
+function parseBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return {};
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
@@ -276,7 +284,10 @@ export default async function handler(req, res) {
       });
     }
 
-    if (existingId) {
+    const body = parseBody(req);
+    const requestedId = clean(body?.spreadsheetId || body?.spreadsheet_id || '');
+
+    if (existingId && !requestedId) {
       return res.status(200).json({
         ok: true,
         already_exists: true,
@@ -291,6 +302,21 @@ export default async function handler(req, res) {
       accessToken = await getGoogleAccessToken(req);
     } catch (error) {
       return res.status(409).json({ error: error.message, code: error.code || 'GOOGLE_NOT_LINKED' });
+    }
+
+    if (requestedId) {
+      await googleRequest(
+        accessToken,
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(requestedId)}?fields=properties.title`
+      );
+      await saveSpreadsheetId(client, business, profile, requestedId);
+      return res.status(200).json({
+        ok: true,
+        linked_existing: true,
+        spreadsheet_id: requestedId,
+        spreadsheet_url: `https://docs.google.com/spreadsheets/d/${requestedId}/edit`,
+        message: 'Your existing Google Sheet is connected to Art Flow.',
+      });
     }
 
     const spreadsheetId = await createSpreadsheet(accessToken, business.name || 'My Business');
