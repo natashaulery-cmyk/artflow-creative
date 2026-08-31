@@ -40,14 +40,6 @@ export default function Orders() {
       const directSources = ["syncVintedPro", "syncDepopPartner", "syncEtsy", "syncEbay"];
       const directMessages = [];
 
-      // Refresh size-based costs before importing new sales so provider/email
-      // orders and spreadsheet-fallback rows use the same current cost table.
-      try {
-        await base44.functions.invoke("syncInventoryFromSheets", { sheetName: "Inventory Costs" });
-      } catch {
-        // Inventory backup is optional; sales syncing must still continue.
-      }
-
       // Direct marketplace APIs are authoritative when available. Drain their
       // paginated history first so large shops can catch up in one button press.
       for (const functionName of directSources) {
