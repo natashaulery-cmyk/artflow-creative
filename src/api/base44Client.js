@@ -12,5 +12,5 @@ export const base44 = createClient({
   functionsVersion,
   serverUrl: backendUrl || 'https://base44.app',
   requiresAuth: false,
-  appBaseUrl: appBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://artflowcreativeapp.com')
+  appBaseUrl: backendUrl || 'https://base44.app'
 });
