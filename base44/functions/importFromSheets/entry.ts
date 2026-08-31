@@ -136,7 +136,7 @@ export default async function(req) {
       quantity: colIndex(['quantity', 'qty']),
       price: priceIdx,
       platform: colIndex(['platform', 'site']),
-      date: colIndex(['date', 'sale_date']),
+      date: exactColIndex(['sale date', 'sale_date', 'date', 'purchase date']),
       buyer: colIndex(['buyer', 'customer', 'name']),
       // The Exact Style tracker uses # as a display sequence, not a marketplace
       // order id, so only explicit order-id headers are treated as identifiers.
@@ -297,6 +297,7 @@ export default async function(req) {
         sale_date,
         platform,
         product_name: productText,
+        order_id: order_id || match?.order_id || null,
         quantity,
         size,
         unit_price,
@@ -308,7 +309,6 @@ export default async function(req) {
         sync_source: 'google_sheet_master',
         archived: false,
       };
-      if (order_id) sheetValues.order_id = order_id;
 
       if (match?.id) {
         usedExistingIds.add(match.id);
