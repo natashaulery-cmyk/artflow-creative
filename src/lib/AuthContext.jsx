@@ -89,32 +89,47 @@ export const AuthProvider = ({ children }) => {
     } catch {}
   }, []);
 
-  const triggerLoginSync = useCallback(async ({ includeExpenses = false } = {}) => {
+  const triggerLoginSync = useCallback(async () => {
     if (syncInFlight.current) return;
     syncInFlight.current = true;
     publishSyncState({ status: 'syncing', at: new Date().toISOString() });
     try {
-      const [sales, expenses] = await Promise.allSettled([
+      // Pull every connected email source first. Each source processes up to
+      // 500 pending emails per pass and failures are isolated so one unconnected
+      // provider never blocks the others.
+      const [gmailSales, outlookSales, gmailExpenses, outlookExpenses] = await Promise.allSettled([
         base44.functions.invoke('processSaleEmails'),
-        includeExpenses
-          ? base44.functions.invoke('processExpenseEmails')
-          : Promise.resolve({ data: null }),
+        base44.functions.invoke('processOutlookSaleEmails'),
+        base44.functions.invoke('processExpenseEmails'),
+        base44.functions.invoke('processOutlookExpenseEmails'),
       ]);
 
-      let salesData = sales.status === 'fulfilled' ? sales.value?.data || null : null;
-      const expenseData = expenses.status === 'fulfilled' ? expenses.value?.data || null : null;
+      // Browser captures and email discoveries are persisted into the shared
+      // spreadsheet. Then reconcile the spreadsheet back into the app so the
+      // ArtFlow Creative Tracker remains the master record.
+      const [browserQueue, sheetOrders, sheetExpenses] = await Promise.allSettled([
+        base44.functions.invoke('flushBrowserCaptures'),
+        base44.functions.invoke('importFromSheets', { mode: 'orders', sheetName: 'Orders' }),
+        base44.functions.invoke('syncSheetExpenseFallback', {}),
+      ]);
 
-      // Do not drain historical backfill from the browser. The server already
-      // runs the importer on a schedule, and repeatedly invoking it here can
-      // exhaust connector / AI integration quotas and cause every sync to fail.
-      // One foreground pass is enough to prioritize fresh orders; background
-      // runs continue the historical catch-up safely.
-
+      const dataOf = (result) => result.status === 'fulfilled' ? result.value?.data || null : null;
       const state = {
         status: 'ok',
         at: new Date().toISOString(),
-        sales: salesData,
-        expenses: expenseData,
+        sales: {
+          gmail: dataOf(gmailSales),
+          outlook: dataOf(outlookSales),
+        },
+        expenses: {
+          gmail: dataOf(gmailExpenses),
+          outlook: dataOf(outlookExpenses),
+        },
+        spreadsheet: {
+          browser: dataOf(browserQueue),
+          orders: dataOf(sheetOrders),
+          expenses: dataOf(sheetExpenses),
+        },
       };
       publishSyncState(state);
       window.dispatchEvent(new CustomEvent('artflow:data-synced', { detail: state }));
@@ -128,14 +143,10 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated || authBackend !== 'base44') return undefined;
 
-    // Keep legacy Base44 sales reasonably fresh while that backend is still available.
-    // Expense classification can invoke AI, so run that automatically only once per
-    // hour while the app is open (plus the initial login sync and the manual button).
-    const salesId = window.setInterval(() => triggerLoginSync(), 5 * 60 * 1000);
-    const expenseId = window.setInterval(
-      () => triggerLoginSync({ includeExpenses: true }),
-      60 * 60 * 1000
-    );
+    // Pull sales and expenses from every connected email source every five
+    // minutes while the app is open. Server-side Gmail schedules use the same
+    // five-minute cadence for accounts whose connector can run without a browser session.
+    const syncId = window.setInterval(() => triggerLoginSync(), 5 * 60 * 1000);
     const syncWhenActive = () => {
       if (document.visibilityState === 'visible') triggerLoginSync();
     };
@@ -143,8 +154,7 @@ export const AuthProvider = ({ children }) => {
     window.addEventListener('online', syncWhenActive);
     document.addEventListener('visibilitychange', syncWhenActive);
     return () => {
-      window.clearInterval(salesId);
-      window.clearInterval(expenseId);
+      window.clearInterval(syncId);
       window.removeEventListener('focus', syncWhenActive);
       window.removeEventListener('online', syncWhenActive);
       document.removeEventListener('visibilitychange', syncWhenActive);
@@ -209,7 +219,7 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setIsLoadingAuth(false);
         setAuthChecked(true);
-        triggerLoginSync({ includeExpenses: true });
+        triggerLoginSync();
         return;
       } catch (error) {
         console.warn('Legacy auth check failed:', error?.message || error);
