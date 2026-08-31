@@ -318,7 +318,7 @@ export default function MobileSaleCapture() {
             <input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Auto-filled product" className="form-input mt-1" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Sale total</label>
               <input inputMode="decimal" value={saleTotal} onChange={(e) => setSaleTotal(e.target.value)} placeholder="Auto-filled" className="form-input mt-1" />
@@ -326,6 +326,10 @@ export default function MobileSaleCapture() {
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
               <input inputMode="numeric" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="form-input mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">Size</label>
+              <input value={size} onChange={(e) => setSize(e.target.value)} placeholder="5x7" className="form-input mt-1" />
             </div>
           </div>
 
@@ -360,6 +364,22 @@ export default function MobileSaleCapture() {
             />
           </div>
         </section>
+
+        {googleNeeded && (
+          <section className="rounded-3xl p-4 border border-[hsl(var(--border))] bg-card">
+            <p className="text-sm font-semibold">Google Sheets permission needed</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">
+              Connect the Google account that owns your ArtFlow Creative Tracker. Art Flow only requests spreadsheet access for this sync.
+            </p>
+            <button
+              type="button"
+              onClick={connectGoogleSheets}
+              className="w-full h-12 rounded-2xl bg-muted text-foreground font-semibold"
+            >
+              Connect Google Sheets
+            </button>
+          </section>
+        )}
 
         <button disabled={!canSave} className="w-full h-14 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
           {saved ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5" />}
