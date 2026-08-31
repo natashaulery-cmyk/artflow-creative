@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Plus, RefreshCw, ExternalLink } from "lucide-react";
+import { Search, Plus, RefreshCw, ExternalLink, Smartphone } from "lucide-react";
 import { useEntity } from "@/lib/useBusinessData";
 import { useOrders } from "@/lib/useOrders";
 import { base44 } from "@/api/base44Client";
@@ -8,7 +8,7 @@ import { EmptyRow } from "@/components/Cards";
 import OrderForm from "@/components/OrderForm";
 import PageHeader from "@/components/PageHeader";
 import { useModalRoute } from "@/hooks/useModalRoute";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import SyncStatus from "@/components/SyncStatus";
 import { PLATFORMS, PLATFORM_TONE, displayPlatform, displayProductName, orderSourceUrl } from "@/lib/platforms";
@@ -19,6 +19,7 @@ export default function Orders() {
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
   const refresh = async () => { await reloadOrders(); };
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [platformFilter, setPlatformFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState("All");
   // This tab stays mounted between visits. Reset it to the newest month whenever
@@ -187,14 +188,24 @@ export default function Orders() {
         </div>
       </div>
 
-      <button
-        onClick={importEmailSales}
-        disabled={importingEmail}
-        className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
-      >
-        <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
-        {importingEmail ? "Syncing all sales…" : "Sync All Sales Now"}
-      </button>
+      <div className="grid grid-cols-1 gap-2">
+        <button
+          onClick={() => navigate("/send-sale")}
+          className="w-full h-12 rounded-2xl bg-muted text-foreground flex items-center justify-center gap-2 text-sm font-semibold"
+        >
+          <Smartphone className="w-4 h-4" />
+          Send Sale from Phone / iPad
+        </button>
+
+        <button
+          onClick={importEmailSales}
+          disabled={importingEmail}
+          className="w-full h-12 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
+        >
+          <RefreshCw className={`w-4 h-4 ${importingEmail ? "animate-spin" : ""}`} />
+          {importingEmail ? "Syncing all sales…" : "Sync All Sales Now"}
+        </button>
+      </div>
 
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
