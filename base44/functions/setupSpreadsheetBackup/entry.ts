@@ -16,6 +16,16 @@ const TAB_VALUES = {
   Orders: [['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit','Source URL']],
   Expenses: [['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID']],
   'Inventory Pricing': [['Size','Base Item Cost','Paper & Ink Cost','Packaging Cost','Total Unit Cost','Low Stock Level','Notes']],
+  Taxes: [
+    ['ArtFlow Tax Summary'],
+    ['Gross Sales', '=SUM(Orders!H2:H)'],
+    ['Order Costs', '=SUM(Orders!N2:N)'],
+    ['Other Deductible Expenses', '=SUM(Expenses!F2:F)'],
+    ['Estimated Net Business Income', '=MAX(0,B2-B3-B4)'],
+    ['Tax Set-Aside Rate', 0.30],
+    ['Estimated Tax Reserve', '=B5*B6'],
+    ['Note', 'Bundles count once using the full Sale Total. This is a planning estimate, not tax advice.'],
+  ],
 };
 
 async function sheetsFetch(accessToken, url, options = {}) {
