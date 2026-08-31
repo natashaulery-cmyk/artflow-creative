@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
+import { getGoogleSheetsAccessToken } from '../../shared/sheetsConnector.js';
 
 const decodeBytes = (value = '') => {
   const clean = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -344,9 +345,135 @@ export default async function(req) {
       await recordHistory(id, messageCreated ? 'imported' : 'skipped', messageCreated ? `Imported ${messageCreated} art-business expense(s)` : 'No qualifying art-business expense found');
     }
 
+    // Google Sheets is the final expense safety net for the current production
+    // UI as well as the newer Expenses screen. It only adds rows not already in
+    // the business database, using both receipt IDs and a date/amount/description
+    // fingerprint to prevent the spreadsheet from double-counting email imports.
+    let spreadsheetCreated = 0;
+    let spreadsheetSkipped = 0;
+    try {
+      const spreadsheetId = String(workspace?.spreadsheetId || '').trim();
+      if (spreadsheetId) {
+        const sheetsToken = await getGoogleSheetsAccessToken(base44);
+        const sheetRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent('Expenses')}!A:I?valueRenderOption=UNFORMATTED_VALUE`,
+          { headers: { Authorization: `Bearer ${sheetsToken}` } }
+        );
+        if (sheetRes.ok) {
+          const rows = (await sheetRes.json())?.values || [];
+          const headerRow = rows.findIndex((row) =>
+            Array.isArray(row)
+            && row.some((cell) => /^date$/i.test(String(cell || '').trim()))
+            && row.some((cell) => /description/i.test(String(cell || '')))
+          );
+          if (headerRow >= 0) {
+            const sheetHeaders = rows[headerRow].map((cell) => String(cell || '').trim().toLowerCase());
+            const col = (...names) => {
+              for (const name of names) {
+                const exact = sheetHeaders.findIndex((header) => header === name);
+                if (exact >= 0) return exact;
+              }
+              for (const name of names) {
+                const partial = sheetHeaders.findIndex((header) => header.includes(name));
+                if (partial >= 0) return partial;
+              }
+              return -1;
+            };
+            const idx = {
+              date: col('date'),
+              category: col('category'),
+              description: col('description', 'item'),
+              amount: col('amount', 'total'),
+              deductiblePercent: col('deductible %', 'deductible percent'),
+              deductibleAmount: col('deductible amount'),
+              source: col('source', 'vendor'),
+              notes: col('notes', 'note'),
+              receiptId: col('receipt id', 'receipt_id', 'transaction id'),
+            };
+            const numberValue = (value, fallback = 0) => {
+              const n = Number(String(value ?? '').replace(/[$,%\s,]/g, ''));
+              return Number.isFinite(n) ? n : fallback;
+            };
+            const normalizeDate = (value) => {
+              if (value === null || value === undefined || value === '') return '';
+              if (typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value).trim())) {
+                const serial = Number(value);
+                if (serial > 20000 && serial < 100000) {
+                  return new Date(Date.UTC(1899, 11, 30) + serial * 86400000).toISOString().slice(0, 10);
+                }
+              }
+              const text = String(value).trim();
+              const us = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              if (us) return `${us[3]}-${String(us[1]).padStart(2, '0')}-${String(us[2]).padStart(2, '0')}`;
+              const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+              if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+              const parsedDate = new Date(text);
+              return Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toISOString().slice(0, 10);
+            };
+            const fingerprint = (expense) => [
+              String(expense?.date || ''),
+              Number(expense?.amount || 0).toFixed(2),
+              String(expense?.description || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(),
+            ].join('|');
+            const liveExpenses = await base44.asServiceRole.entities.Expense.list('-date', 5000);
+            const activeExpenses = liveExpenses.filter((expense) => !expense.archived && expense.business_id === businessId);
+            const receiptIds = new Set(activeExpenses.map((expense) => String(expense.receipt_id || '').trim()).filter(Boolean));
+            const fingerprints = new Set(activeExpenses.map(fingerprint));
+
+            for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
+              const row = rows[rowIndex] || [];
+              const date = normalizeDate(idx.date >= 0 ? row[idx.date] : '');
+              const description = String(idx.description >= 0 ? row[idx.description] || '' : '').trim();
+              const amountValue = numberValue(idx.amount >= 0 ? row[idx.amount] : 0, 0);
+              if (!date || date > new Date().toISOString().slice(0, 10) || !description || !(amountValue > 0)) continue;
+
+              const rawReceiptId = String(idx.receiptId >= 0 ? row[idx.receiptId] || '' : '').trim();
+              const candidate = { date, amount: amountValue, description };
+              if ((rawReceiptId && receiptIds.has(rawReceiptId)) || fingerprints.has(fingerprint(candidate))) {
+                spreadsheetSkipped++;
+                continue;
+              }
+
+              const pctRaw = numberValue(idx.deductiblePercent >= 0 ? row[idx.deductiblePercent] : 100, 100);
+              const deductiblePercent = Math.max(0, Math.min(100, pctRaw <= 1 ? pctRaw * 100 : pctRaw));
+              const deductibleAmount = idx.deductibleAmount >= 0 && row[idx.deductibleAmount] !== undefined
+                ? numberValue(row[idx.deductibleAmount], amountValue * deductiblePercent / 100)
+                : amountValue * deductiblePercent / 100;
+              const rawCategory = String(idx.category >= 0 ? row[idx.category] || '' : '').trim();
+              const category = categories.includes(rawCategory) ? rawCategory : 'Other Business Expense';
+              const receiptId = rawReceiptId || `sheet:Expenses:${rowIndex + 1}:${date}:${amountValue.toFixed(2)}`;
+
+              await base44.asServiceRole.entities.Expense.create({
+                business_id: businessId,
+                access_emails: accessEmails,
+                created_by_id: ownerId,
+                date,
+                category,
+                description,
+                amount: amountValue,
+                deductible_percent: deductiblePercent,
+                deductible_amount: +deductibleAmount.toFixed(2),
+                source: String(idx.source >= 0 ? row[idx.source] || 'Google Sheets' : 'Google Sheets').trim() || 'Google Sheets',
+                notes: String(idx.notes >= 0 ? row[idx.notes] || '' : '').trim() || 'Imported from Expenses spreadsheet fallback',
+                receipt_id: receiptId,
+                sync_source: 'google_sheet_fallback',
+                archived: false,
+              });
+              receiptIds.add(receiptId);
+              fingerprints.add(fingerprint(candidate));
+              spreadsheetCreated++;
+            }
+          }
+        }
+      }
+    } catch {
+      // Spreadsheet fallback is deliberately non-blocking.
+    }
+
     const remaining = Math.max(0, pendingIds.length - batch.length);
-    const message = created + migrated
-      ? `Synced ${created + migrated} expense${created + migrated === 1 ? '' : 's'}${remaining ? ` · ${remaining} emails left to check` : ''}`
+    const totalCreated = created + migrated + spreadsheetCreated;
+    const message = totalCreated
+      ? `Synced ${totalCreated} expense${totalCreated === 1 ? '' : 's'}${remaining ? ` · ${remaining} emails left to check` : ''}`
       : remaining
         ? `Checked ${batch.length} emails · ${remaining} left to check`
         : 'Art-business expenses are up to date';
@@ -356,6 +483,8 @@ export default async function(req) {
       processed: batch.length,
       created,
       migrated,
+      spreadsheet_created: spreadsheetCreated,
+      spreadsheet_skipped: spreadsheetSkipped,
       remaining,
       skipped,
       errors,
