@@ -41,7 +41,7 @@ const TAB_VALUES = {
   ],
   'Month Lists': [
     ['All Months'],
-    ['=SORT(UNIQUE(FILTER({EOMONTH(Orders!A2:A,0);EOMONTH(Expenses!A2:A,0)},{Orders!A2:A;Expenses!A2:A}<>"")),1,FALSE)'],
+    ['=IFERROR(SORT(UNIQUE(FILTER({EOMONTH(Orders!A2:A,0);EOMONTH(Expenses!A2:A,0)},{Orders!A2:A;Expenses!A2:A}<>"")),1,FALSE),"")'],
   ],
   'All Items': [
     ['Item #','Product Name','Condition','Size','Item Description','Purchase Price','Purchase Date','Purchase Platform / Store','Listed?','Sold?','Sold On','Gross Sale Price','Fees','Shipping Cost','Net Profit','Sale Date','Box Letter','Bag Number'],
@@ -204,6 +204,9 @@ async function createSpreadsheet(accessToken, businessName) {
   });
 
   const sheetProps = created.sheets || [];
+  const sheetByTitle = Object.fromEntries(
+    sheetProps.map((sheet) => [sheet?.properties?.title, sheet?.properties?.sheetId]).filter(([, id]) => id != null)
+  );
   const headerRequests = [];
   for (const sheet of sheetProps) {
     const sheetId = sheet?.properties?.sheetId;
@@ -227,6 +230,43 @@ async function createSpreadsheet(accessToken, businessName) {
       },
     });
   }
+  const dashboardSheetId = sheetByTitle.Dashboard;
+  const monthListSheetId = sheetByTitle['Month Lists'];
+  if (dashboardSheetId != null && monthListSheetId != null) {
+    headerRequests.push(
+      {
+        setDataValidation: {
+          range: { sheetId: dashboardSheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 },
+          rule: {
+            condition: { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: "='Month Lists'!$A$1:$A$1000" }] },
+            strict: true,
+            showCustomUi: true,
+          },
+        },
+      },
+      {
+        repeatCell: {
+          range: { sheetId: dashboardSheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 },
+          cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'mmmm yyyy' } } },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      },
+      {
+        repeatCell: {
+          range: { sheetId: monthListSheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'mmmm yyyy' } } },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      },
+      {
+        updateSheetProperties: {
+          properties: { sheetId: monthListSheetId, hidden: true },
+          fields: 'hidden',
+        },
+      }
+    );
+  }
+
   if (headerRequests.length) {
     await googleRequest(accessToken, `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`, {
       method: 'POST',
@@ -253,14 +293,6 @@ async function saveSpreadsheetId(client, business, profile, spreadsheetId) {
       // The business workspace is authoritative; legacy profile update is best-effort only.
     }
   }
-}
-
-function parseBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return {}; }
-  }
-  return {};
 }
 
 export default async function handler(req, res) {
@@ -291,10 +323,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const body = parseBody(req);
-    const requestedId = clean(body?.spreadsheetId || body?.spreadsheet_id || '');
-
-    if (existingId && !requestedId) {
+    if (existingId) {
       return res.status(200).json({
         ok: true,
         already_exists: true,
@@ -309,21 +338,6 @@ export default async function handler(req, res) {
       accessToken = await getGoogleAccessToken(req);
     } catch (error) {
       return res.status(409).json({ error: error.message, code: error.code || 'GOOGLE_NOT_LINKED' });
-    }
-
-    if (requestedId) {
-      await googleRequest(
-        accessToken,
-        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(requestedId)}?fields=properties.title`
-      );
-      await saveSpreadsheetId(client, business, profile, requestedId);
-      return res.status(200).json({
-        ok: true,
-        linked_existing: true,
-        spreadsheet_id: requestedId,
-        spreadsheet_url: `https://docs.google.com/spreadsheets/d/${requestedId}/edit`,
-        message: 'Your existing Google Sheet is connected to Art Flow.',
-      });
     }
 
     const spreadsheetId = await createSpreadsheet(accessToken, business.name || 'My Business');
