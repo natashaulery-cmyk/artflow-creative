@@ -9,7 +9,7 @@ const vercelProductionURL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 const vercelDeploymentURL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "";
-const baseURL = process.env.BETTER_AUTH_URL || vercelProductionURL || "https://art-flow-creative-art-fed4.vercel.app";
+const baseURL = process.env.BETTER_AUTH_URL || vercelProductionURL || "https://artflowcreative.com";
 
 const socialProviders = {};
 
