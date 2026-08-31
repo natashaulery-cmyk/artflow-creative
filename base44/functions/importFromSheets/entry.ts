@@ -141,6 +141,8 @@ export default async function(req) {
       // The Exact Style tracker uses # as a display sequence, not a marketplace
       // order id, so only explicit order-id headers are treated as identifiers.
       orderId: exactColIndex(['order id', 'order_id', 'order number', 'order #']),
+      sourceId: exactColIndex(['source email id', 'source id']),
+      sourceUrl: exactColIndex(['source url', 'order url']),
       cost: costIdx,
       profit: profitIdx,
       fees: feesIdx,
@@ -192,18 +194,21 @@ export default async function(req) {
       if (Number.isNaN(d.getTime())) return null;
       return d.toISOString().slice(0, 10);
     };
-    const fingerprint = (platform, date, product, total) =>
-      `${platform}|${date || ''}|${Number(total || 0).toFixed(2)}|${normalizeProduct(product)}`;
-    const existingByFingerprint = new Map();
-    for (const order of existing) {
-      if (order.archived) continue;
-      existingByFingerprint.set(
-        fingerprint(order.platform, order.sale_date, order.product_name, order.sale_total),
-        order
-      );
-    }
+    const fingerprint = (platform, date, product, total, quantity = 1, size = '') =>
+      `${platform}|${date || ''}|${Number(total || 0).toFixed(2)}|${Number(quantity || 1)}|${String(size || '').toLowerCase().trim()}|${normalizeProduct(product)}`;
+    const lineIdentity = (product, total) =>
+      `${normalizeProduct(product)}|${Number(total || 0).toFixed(2)}`;
+    const stableHash = (value = '') => {
+      let hash = 2166136261;
+      const text = String(value || '');
+      for (let i = 0; i < text.length; i++) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(36);
+    };
     const usedExistingIds = new Set();
-    const seenSheetRows = new Set();
+    const occurrenceByFingerprint = new Map();
 
     let skipped = 0;
     const toCreate = [];
@@ -242,6 +247,8 @@ export default async function(req) {
       if (!sale_date) continue;
       const order_id = idx.orderId >= 0 && row[idx.orderId] ? String(row[idx.orderId]).trim() : null;
       const buyer = idx.buyer >= 0 && row[idx.buyer] ? String(row[idx.buyer]) : null;
+      const sheetSourceId = idx.sourceId >= 0 && row[idx.sourceId] ? String(row[idx.sourceId]).trim() : null;
+      const sourceUrl = idx.sourceUrl >= 0 && row[idx.sourceUrl] ? String(row[idx.sourceUrl]).trim() : null;
 
       const inv = inventoryCosts.find((i) => i.size === size);
       let costs = calculateOrderCosts({ quantity, size, unit_price }, inv);
@@ -274,23 +281,44 @@ export default async function(req) {
         };
       }
 
-      const rowFingerprint = fingerprint(platform, sale_date, productText, costs.sale_total);
-      if (seenSheetRows.has(rowFingerprint)) {
-        skipped++;
-        continue;
-      }
-      seenSheetRows.add(rowFingerprint);
+      const rowFingerprint = fingerprint(platform, sale_date, productText, costs.sale_total, quantity, size);
+      const occurrence = (occurrenceByFingerprint.get(rowFingerprint) || 0) + 1;
+      occurrenceByFingerprint.set(rowFingerprint, occurrence);
+      const syntheticSourceId = `sheet:${stableHash(`${spreadsheetId}|${resolvedSheetName}|${rowFingerprint}`)}:${occurrence}`;
+      const targetLineIdentity = lineIdentity(productText, costs.sale_total);
 
-      let match = existingByFingerprint.get(rowFingerprint) || null;
+      let match = existing.find((order) =>
+        !order.archived && !usedExistingIds.has(order.id) && order.source_email_id === syntheticSourceId
+      ) || null;
+
+      if (!match && sheetSourceId) {
+        match = existing.find((order) =>
+          !order.archived
+          && !usedExistingIds.has(order.id)
+          && String(order.source_email_id || '').trim() === sheetSourceId
+          && lineIdentity(order.product_name, order.sale_total) === targetLineIdentity
+        ) || null;
+      }
+
+      if (!match && order_id) {
+        match = existing.find((order) =>
+          !order.archived
+          && !usedExistingIds.has(order.id)
+          && order.platform === platform
+          && String(order.order_id || '').trim() === order_id
+          && lineIdentity(order.product_name, order.sale_total) === targetLineIdentity
+        ) || null;
+      }
+
+      // Compatibility fallback for rows imported before sheet row identities
+      // existed. Consume each existing row at most once so two legitimate,
+      // otherwise-identical sales can both survive the same sync.
       if (!match) {
-        const normalizedProduct = normalizeProduct(productText);
-        match = existing.find((order) => {
-          if (order.archived || usedExistingIds.has(order.id)) return false;
-          if (order.platform !== platform || order.sale_date !== sale_date) return false;
-          if (Math.abs(Number(order.sale_total || 0) - Number(costs.sale_total || 0)) > 0.011) return false;
-          const existingProduct = normalizeProduct(order.product_name);
-          return existingProduct === normalizedProduct || existingProduct.includes(normalizedProduct) || normalizedProduct.includes(existingProduct);
-        }) || null;
+        match = existing.find((order) =>
+          !order.archived
+          && !usedExistingIds.has(order.id)
+          && fingerprint(order.platform, order.sale_date, order.product_name, order.sale_total, order.quantity, order.size) === rowFingerprint
+        ) || null;
       }
 
       const sheetValues = {
@@ -302,6 +330,8 @@ export default async function(req) {
         size,
         unit_price,
         buyer,
+        source_email_id: sheetSourceId || match?.source_email_id || syntheticSourceId,
+        source_url: sourceUrl || match?.source_url || null,
         ...costs,
         business_id: businessId,
         access_emails: accessEmails,
