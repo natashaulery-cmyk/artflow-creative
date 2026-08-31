@@ -3,6 +3,7 @@ import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { importInventory } from '../../shared/inventorySync.js';
 import { importArtPieces } from '../../shared/artPieceSync.js';
+import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 // Per-user Google Sheets import. Each authenticated user imports from their
 // own spreadsheet (saved on their account, or passed in). Orders are created
@@ -16,8 +17,9 @@ export default async function(req) {
     }
 
     const reqBody = await req.json().catch(() => ({}));
+    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
     const spreadsheetId =
-      reqBody?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id;
+      reqBody?.spreadsheetId || workspace.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id;
     const sheetName = reqBody?.sheetName;
     if (!spreadsheetId) {
       return Response.json(
@@ -138,8 +140,16 @@ export default async function(req) {
       const row = rows[r];
       const product = idx.product >= 0 ? row[idx.product] : null;
       if (!product) continue;
-      const platformRaw = String(idx.platform >= 0 ? row[idx.platform] || '' : 'Vinted').trim();
-      const platform = /depop/i.test(platformRaw) ? 'Depop' : 'Vinted';
+      const platformRaw = String(idx.platform >= 0 ? row[idx.platform] || '' : '').trim();
+      const platform = /vinted/i.test(platformRaw) ? 'Vinted'
+        : /depop/i.test(platformRaw) ? 'Depop'
+        : /etsy/i.test(platformRaw) ? 'Etsy'
+        : /ebay/i.test(platformRaw) ? 'eBay'
+        : null;
+      if (!platform) {
+        skipped++;
+        continue;
+      }
       const size = String(idx.size >= 0 ? row[idx.size] || '5x7' : '5x7').trim();
       const quantity = Number(idx.quantity >= 0 ? row[idx.quantity] : 1) || 1;
       const priceRaw = String(idx.price >= 0 ? row[idx.price] || '' : '').replace(/[^0-9.]/g, '');
