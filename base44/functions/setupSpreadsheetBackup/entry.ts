@@ -12,10 +12,11 @@ const TAB_VALUES = {
     ['Depop Sales', '=SUMIF(Orders!B2:B,"Depop",Orders!H2:H)'],
     ['Etsy Sales', '=SUMIF(Orders!B2:B,"Etsy",Orders!H2:H)'],
     ['eBay Sales', '=SUMIF(Orders!B2:B,"eBay",Orders!H2:H)'],
+    ['Estimated Tax Reserve', '=Taxes!B7'],
   ],
   Orders: [['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit','Source URL']],
   Expenses: [['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID']],
-  'Inventory Pricing': [['Size','Base Item Cost','Paper & Ink Cost','Packaging Cost','Total Unit Cost','Low Stock Level','Notes']],
+  'Inventory Pricing': [['Name','Category','Size','Base Item Cost','Paper & Ink Cost','Packaging Cost','Total Unit Cost','Quantity On Hand','Low Stock Level','Image URL']],
   Taxes: [
     ['ArtFlow Tax Summary'],
     ['Gross Sales', '=SUM(Orders!H2:H)'],
@@ -24,6 +25,7 @@ const TAB_VALUES = {
     ['Estimated Net Business Income', '=MAX(0,B2-B3-B4)'],
     ['Tax Set-Aside Rate', 0.30],
     ['Estimated Tax Reserve', '=B5*B6'],
+    ['Quarterly Planning Amount', '=B7/4'],
     ['Note', 'Bundles count once using the full Sale Total. This is a planning estimate, not tax advice.'],
   ],
 };
