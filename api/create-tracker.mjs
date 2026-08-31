@@ -117,6 +117,7 @@ async function getOrCreateBusiness(client, profile, user) {
     member_emails: [user.email],
     sales_emails: [user.email],
     expense_emails: [user.email],
+    tracked_marketplaces: [],
   };
   await client.query(
     `INSERT INTO artflow.businesses (base44_id, name, primary_email, data)
