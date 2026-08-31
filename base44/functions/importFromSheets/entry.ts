@@ -5,9 +5,9 @@ import { importInventory } from '../../shared/inventorySync.js';
 import { importArtPieces } from '../../shared/artPieceSync.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
-// Per-user Google Sheets import. Each authenticated user imports from their
-// own spreadsheet (saved on their account, or passed in). Orders are created
-// under the user, so per-user privacy keeps them visible only to them.
+// Business-scoped Google Sheets import. The business-level spreadsheet is the
+// authoritative fallback, with the older per-user spreadsheet ID kept only as
+// a compatibility fallback.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -118,8 +118,21 @@ export default async function(req) {
       cost: costIdx,
     };
 
-    const inventoryCosts = await base44.entities.InventoryCost.list('size', 100);
-    const existing = await base44.entities.Order.list('-created_date', 5000);
+    const { ownerId, businessId, accessEmails = [] } = workspace;
+    if (!ownerId || !businessId) {
+      return Response.json({ error: 'No business workspace found.' }, { status: 400 });
+    }
+
+    const [allInventoryCosts, allExisting] = await Promise.all([
+      base44.asServiceRole.entities.InventoryCost.list('size', 5000),
+      base44.asServiceRole.entities.Order.list('-created_date', 5000),
+    ]);
+    const inventoryCosts = allInventoryCosts.filter((item) =>
+      item.business_id === businessId || (!item.business_id && item.created_by_id === ownerId)
+    );
+    const existing = allExisting.filter((order) =>
+      order.business_id === businessId || (!order.business_id && order.created_by_id === ownerId)
+    );
     const dupKey = (p, oid, pn) => `${p}|${oid || ''}|${pn}`;
     const seen = new Set(existing.map((o) => dupKey(o.platform, o.order_id, o.product_name)));
 
@@ -190,6 +203,11 @@ export default async function(req) {
         unit_price,
         buyer,
         ...costs,
+        business_id: businessId,
+        access_emails: accessEmails,
+        created_by_id: ownerId,
+        sync_source: 'google_sheet_fallback',
+        archived: false,
       });
       seen.add(key);
     }
@@ -197,7 +215,7 @@ export default async function(req) {
     let imported = 0;
     for (let i = 0; i < toCreate.length; i += 200) {
       const batch = toCreate.slice(i, i + 200);
-      await base44.entities.Order.bulkCreate(batch);
+      await base44.asServiceRole.entities.Order.bulkCreate(batch);
       imported += batch.length;
     }
 
