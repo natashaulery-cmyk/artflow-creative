@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { getOutlookProfile } from '../../shared/outlookMail.js';
+import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 async function currentUserConnector(base44, connectorId) {
   if (!connectorId) return { configured: false, connected: false, connector_id: '' };
@@ -49,7 +50,8 @@ export default async function(req) {
     try { outlookEmail = (await getOutlookProfile(outlook.accessToken)).email; } catch {}
   }
 
-  const spreadsheetId = String(user.spreadsheet_id || user.data?.spreadsheet_id || '').trim();
+  const workspace = await resolveBusinessWorkspace(base44, user.email || '');
+  const spreadsheetId = String(workspace.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id || '').trim();
 
   return Response.json({
     gmail: {
