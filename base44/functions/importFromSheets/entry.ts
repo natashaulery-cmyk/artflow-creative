@@ -62,7 +62,7 @@ export default async function(req) {
     }
 
     if (mode === 'inventory') {
-      return await importInventory(base44, accessToken, spreadsheetId, sheetName);
+      return await importInventory(base44, accessToken, spreadsheetId, sheetName, workspace);
     }
 
     if (mode === 'artpieces') {
