@@ -179,6 +179,7 @@ function parseOrders(rows) {
   for (const key of Object.keys(idx)) if (idx[key] < 0) idx[key] = fallback[key];
 
   const parsed = [];
+  const occurrenceByFingerprint = new Map();
   for (let rowIndex = headerRowIndex + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] || [];
     const productName = clean(row[idx.product]);
@@ -206,12 +207,16 @@ function parseOrders(rows) {
       estimated_profit: moneyNumber(row[idx.profit]) || +(saleTotal - totalCost).toFixed(2),
       source_url: clean(row[idx.sourceUrl]) || null,
     };
+    const occurrenceBase = fallbackFingerprint(order);
+    const occurrence = (occurrenceByFingerprint.get(occurrenceBase) || 0) + 1;
+    occurrenceByFingerprint.set(occurrenceBase, occurrence);
+    order.sheet_record_key = `orders:${crypto.createHash('sha256').update(occurrenceBase).digest('hex')}:${occurrence}`;
     parsed.push(order);
   }
   return parsed;
 }
 
-function fallbackFingerprint(order) {
+function legacyFallbackFingerprint(order) {
   return [
     normalize(order.platform),
     order.sale_date,
@@ -220,23 +225,51 @@ function fallbackFingerprint(order) {
   ].join('|');
 }
 
+function fallbackFingerprint(order) {
+  return [
+    legacyFallbackFingerprint(order),
+    Number(order.quantity || 1),
+    normalize(order.size),
+    normalize(order.buyer),
+  ].join('|');
+}
+
+function lineIdentity(order) {
+  return [
+    normalize(order.product_name),
+    Number(order.sale_total || 0).toFixed(2),
+  ].join('|');
+}
+
 function existingKeys(order) {
   const keys = [];
-  if (clean(order.source_email_id)) keys.push(`source:${clean(order.source_email_id)}`);
-  if (clean(order.order_id)) keys.push(`order:${normalize(order.platform)}:${clean(order.order_id)}`);
-  keys.push(`fallback:${fallbackFingerprint(order)}`);
+  const sheetRecordKey = clean(order.sheet_record_key || order.data?.sheet_record_key);
+  if (sheetRecordKey) keys.push(`sheet:${sheetRecordKey}`);
+  if (clean(order.source_email_id) && !clean(order.source_email_id).startsWith('sheet:')) {
+    keys.push(`source:${clean(order.source_email_id)}:${lineIdentity(order)}`);
+  }
+  if (clean(order.order_id)) {
+    keys.push(`order:${normalize(order.platform)}:${clean(order.order_id)}:${lineIdentity(order)}`);
+  }
+  if (!keys.length) keys.push(`fallback:${fallbackFingerprint(order)}`);
   return keys;
 }
 
 async function syncOrders(client, profile, business, orders) {
   const result = await client.query(
-    `SELECT platform, order_id, product_name, sale_date, sale_total, source_email_id
+    `SELECT base44_id, platform, order_id, product_name, quantity, size, sale_date, sale_total, source_email_id, data
        FROM artflow.orders
       WHERE business_id = $1 AND archived IS NOT TRUE`,
     [business.base44_id]
   );
   const seen = new Set();
-  for (const order of result.rows) for (const key of existingKeys(order)) seen.add(key);
+  const legacySheetSources = new Set();
+  for (const order of result.rows) {
+    for (const key of existingKeys(order)) seen.add(key);
+    const sourceId = clean(order.source_email_id);
+    if (/^sheet:[a-f0-9]{64}$/i.test(sourceId)) legacySheetSources.add(sourceId);
+  }
+  const consumedLegacySources = new Set();
 
   const accessEmails = Array.from(new Set([
     business.primary_email,
@@ -250,15 +283,30 @@ async function syncOrders(client, profile, business, orders) {
   let skipped = 0;
   for (const order of orders) {
     const keys = existingKeys(order);
-    if (keys.some((key) => seen.has(key))) {
+    let duplicate = keys.some((key) => seen.has(key));
+
+    // Before occurrence-aware sheet keys existed, identifier-less rows used one
+    // hash per sale fingerprint. Consume that legacy match only once so a second
+    // legitimate identical sale in the tracker is no longer discarded.
+    if (!duplicate && !clean(order.source_email_id) && !clean(order.order_id)) {
+      const legacySourceId = `sheet:${crypto.createHash('sha256').update(legacyFallbackFingerprint(order)).digest('hex')}`;
+      if (legacySheetSources.has(legacySourceId) && !consumedLegacySources.has(legacySourceId)) {
+        consumedLegacySources.add(legacySourceId);
+        duplicate = true;
+      }
+    }
+
+    if (duplicate) {
       skipped += 1;
       continue;
     }
-    const generatedSourceId = order.source_email_id || `sheet:${crypto.createHash('sha256').update(fallbackFingerprint(order)).digest('hex')}`;
+
+    const generatedSourceId = order.source_email_id || `sheet:${order.sheet_record_key}`;
     const data = {
       access_emails: accessEmails,
       source_url: order.source_url,
       source: 'google_sheet_master',
+      sheet_record_key: order.sheet_record_key,
     };
     const id = crypto.randomUUID();
     const now = new Date();
