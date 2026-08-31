@@ -14,7 +14,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     // Google is both a sign-in provider and the user's direct spreadsheet
     // connection. Better Auth stores/refreshes this token in Neon, so Art Flow
     // does not need the legacy Base44 Google Sheets connector for Neon users.
-    scope: ["https://www.googleapis.com/auth/spreadsheets"],
+    scope: [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file",
+    ],
     accessType: "offline",
     includeGrantedScopes: true,
   };
