@@ -34,7 +34,7 @@ export default async function(req) {
         { status: 409 }
       );
     }
-    return await importInventory(base44, accessToken, spreadsheetId, sheetName);
+    return await importInventory(base44, accessToken, spreadsheetId, sheetName, workspace);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
