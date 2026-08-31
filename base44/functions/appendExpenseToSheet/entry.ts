@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
+import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 // Expense export. Appends a single expense to the spreadsheet saved on the
 // current user's account, using the app's managed Google Sheets connection.
@@ -27,8 +28,9 @@ export default async function(req) {
     if (!expenseId) {
       return Response.json({ error: 'expense_id required' }, { status: 400 });
     }
+    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
     const spreadsheetId =
-      reqBody?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id;
+      reqBody?.spreadsheetId || workspace.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id;
     if (!spreadsheetId) {
       return Response.json({ error: 'No spreadsheet connected' }, { status: 400 });
     }
