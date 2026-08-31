@@ -402,6 +402,25 @@ export default async function(req) {
       return Response.json({ error: 'No business workspace found for the connected Gmail account' }, { status: 500 });
     }
 
+    const enabledMarketplaces = workspace.marketplaceSelectionConfigured
+      ? workspace.trackedMarketplaces
+      : ALL_MARKETPLACES;
+    if (workspace.marketplaceSelectionConfigured && enabledMarketplaces.length === 0) {
+      const response = {
+        connected_email: workspace.email,
+        found: 0,
+        processed: 0,
+        created: 0,
+        migrated: 0,
+        skipped: 0,
+        errors: 0,
+        remaining: 0,
+        message: 'Marketplace tracking is turned off. Choose selling sites in Account to resume sales sync.',
+      };
+      await saveSyncState(base44, ownerId, businessId, { ...response, status: 'ok' });
+      return Response.json(response);
+    }
+
     // Prevent overlapping login/focus/timer syncs from importing the same email
     // at the same time. Client-side guards do not protect multiple tabs/devices.
     const priorStates = await base44.asServiceRole.entities.SyncState.list('-last_synced_at', 100);
