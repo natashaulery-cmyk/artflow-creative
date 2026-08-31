@@ -10,14 +10,17 @@ export async function getCurrentBusinessWorkspace() {
   let business = null;
   try {
     const businesses = await base44.entities.Business.list("name", 100);
-    // Email membership is the source of truth. This prevents an older/stale
-    // active_business_id from sending the user into a duplicate workspace.
-    business = businesses.find((b) =>
+    // Email membership is the source of truth. Prefer the member workspace that
+    // owns a spreadsheet so an older/stale active_business_id or duplicate
+    // workspace cannot split the user's data.
+    const emailBusinesses = businesses.filter((b) =>
       (b.sales_emails || []).some((item) => normalizeEmail(item) === email)
       || (b.expense_emails || []).some((item) => normalizeEmail(item) === email)
       || (b.member_emails || []).some((item) => normalizeEmail(item) === email)
       || normalizeEmail(b.primary_email) === email
-    )
+    );
+    business = emailBusinesses.find((b) => String(b.spreadsheet_id || '').trim())
+      || emailBusinesses[0]
       || businesses.find((b) => b.id === businessId)
       || null;
   } catch {}
