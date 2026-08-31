@@ -178,8 +178,31 @@ export const AuthProvider = ({ children }) => {
     setIsLoadingAuth(true);
     setAuthError(null);
 
-    // The new Art Flow account system is authoritative. It is backed by Neon
-    // through Better Auth and is used by Art Flow's server APIs.
+    // The production spreadsheet, email, and business-workspace sync functions
+    // currently use the Base44 authenticated session. Prefer it whenever a token
+    // exists so the app can immediately reconcile the connected tracker.
+    if (appParams.token) {
+      try {
+        const currentUser = await withTimeout(base44.auth.me(), 8000, 'Authentication check');
+        const businessId = await ensureBusinessWorkspace(currentUser);
+        const hydratedUser = businessId
+          ? { ...currentUser, active_business_id: businessId, data: { ...(currentUser.data || {}), active_business_id: businessId }, auth_backend: 'base44' }
+          : { ...currentUser, auth_backend: 'base44' };
+        setUser(hydratedUser);
+        setAuthBackend('base44');
+        setIsAuthenticated(true);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        triggerLoginSync();
+        return;
+      } catch (error) {
+        console.warn('Base44 auth check failed:', error?.message || error);
+      }
+    }
+
+    // Keep Neon/Better Auth as the fallback during migration. A Neon-only
+    // session can still open the app, but the normal production login establishes
+    // the Base44 session first so spreadsheet sync remains active.
     try {
       const sessionResult = await artflowAuthClient.getSession();
       const session = sessionResult?.data || sessionResult;
@@ -216,27 +239,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.warn('Neon auth check did not return a session:', error?.message || error);
-    }
-
-    // Temporary compatibility fallback for accounts that have not yet moved
-    // from Base44. This can be removed after the migration is complete.
-    if (appParams.token) {
-      try {
-        const currentUser = await withTimeout(base44.auth.me(), 8000, 'Authentication check');
-        const businessId = await ensureBusinessWorkspace(currentUser);
-        const hydratedUser = businessId
-          ? { ...currentUser, active_business_id: businessId, data: { ...(currentUser.data || {}), active_business_id: businessId }, auth_backend: 'base44' }
-          : { ...currentUser, auth_backend: 'base44' };
-        setUser(hydratedUser);
-        setAuthBackend('base44');
-        setIsAuthenticated(true);
-        setIsLoadingAuth(false);
-        setAuthChecked(true);
-        triggerLoginSync();
-        return;
-      } catch (error) {
-        console.warn('Legacy auth check failed:', error?.message || error);
-      }
     }
 
     setUser(null);
