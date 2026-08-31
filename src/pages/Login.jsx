@@ -37,7 +37,7 @@ export default function Login() {
     try {
       const { base44 } = await import("@/api/base44Client");
       const destination = `${window.location.origin}${returnTo}`;
-      await base44.auth.redirectToLogin(destination);
+      base44.auth.loginWithProvider("google", destination);
     } catch (err) {
       setError(err?.message || "Google sign-in is unavailable right now.");
       setGoogleLoading(false);
