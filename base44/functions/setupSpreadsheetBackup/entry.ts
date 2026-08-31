@@ -2,11 +2,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
-const TAB_HEADERS = {
-  Orders: ['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit'],
-  Expenses: ['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID'],
-  Inventory: ['Item','Size','Category','Base Item Cost','Paper & Ink Cost','Packaging Cost','Quantity On Hand','Low Stock Level','Notes'],
-  'Monthly Summary': ['Month','Sales','Expenses','Profit','Orders'],
+const TAB_VALUES = {
+  Dashboard: [
+    ['ArtFlow Creative Dashboard'],
+    ['Total Sales', '=SUM(Orders!H2:H)'],
+    ['Total Expenses', '=SUM(Expenses!D2:D)'],
+    ['Estimated Profit', '=SUM(Orders!O2:O)-SUM(Expenses!F2:F)'],
+    ['Vinted Sales', '=SUMIF(Orders!B2:B,"Vinted",Orders!H2:H)'],
+    ['Depop Sales', '=SUMIF(Orders!B2:B,"Depop",Orders!H2:H)'],
+    ['Etsy Sales', '=SUMIF(Orders!B2:B,"Etsy",Orders!H2:H)'],
+    ['eBay Sales', '=SUMIF(Orders!B2:B,"eBay",Orders!H2:H)'],
+  ],
+  Orders: [['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit','Source URL']],
+  Expenses: [['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID']],
+  'Inventory Pricing': [['Size','Base Item Cost','Paper & Ink Cost','Packaging Cost','Total Unit Cost','Low Stock Level','Notes']],
 };
 
 async function sheetsFetch(accessToken, url, options = {}) {
@@ -48,18 +57,18 @@ export default async function(req) {
     const root = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}`;
     const meta = await sheetsFetch(accessToken, `${root}?fields=properties.title,sheets.properties`);
     const existingTitles = new Set((meta.sheets || []).map((sheet) => sheet?.properties?.title).filter(Boolean));
-    const missing = Object.keys(TAB_HEADERS).filter((title) => !existingTitles.has(title));
+    const missing = Object.keys(TAB_VALUES).filter((title) => !existingTitles.has(title));
 
     if (missing.length) {
       await sheetsFetch(accessToken, `${root}:batchUpdate`, {
         method: 'POST',
-        body: JSON.stringify({ requests: missing.map((title) => ({ addSheet: { properties: { title, frozenRowCount: 1 } } })) }),
+        body: JSON.stringify({ requests: missing.map((title) => ({ addSheet: { properties: { title, gridProperties: { frozenRowCount: 1 } } } })) }),
       });
     }
 
     const initialized = [];
     const untouched = [];
-    for (const [title, headers] of Object.entries(TAB_HEADERS)) {
+    for (const [title, values] of Object.entries(TAB_VALUES)) {
       const read = await sheetsFetch(accessToken, `${root}/values/${encodeURIComponent(title)}!A1:Z3`);
       const rows = Array.isArray(read?.values) ? read.values : [];
       const hasContent = rows.some((row) => Array.isArray(row) && row.some((cell) => String(cell ?? '').trim() !== ''));
@@ -68,8 +77,7 @@ export default async function(req) {
         continue;
       }
 
-      const values = [headers];
-      await sheetsFetch(accessToken, `${root}/values/${encodeURIComponent(title)}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+      await sheetsFetch(accessToken, `${root}/values/${encodeURIComponent(title)}!A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
         method: 'POST',
         body: JSON.stringify({ values }),
       });
