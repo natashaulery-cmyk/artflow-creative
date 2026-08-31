@@ -29,6 +29,7 @@ import TermsOfService from '@/pages/TermsOfService';
 import Support from '@/pages/Support';
 import EtsyCallback from '@/pages/EtsyCallback';
 import EbayCallback from '@/pages/EbayCallback';
+import MobileSaleCapture from '@/pages/MobileSaleCapture';
 // Add page imports here
 
 const TabShell = () => null;
@@ -109,6 +110,7 @@ const AuthenticatedApp = () => {
           <Route path="/reports" element={<Reports />} />
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/send-sale" element={<MobileSaleCapture />} />
           <Route path="/etsy/callback" element={<EtsyCallback />} />
           <Route path="/ebay/callback" element={<EbayCallback />} />
           <Route path="/calendar" element={<Calendar />} />
