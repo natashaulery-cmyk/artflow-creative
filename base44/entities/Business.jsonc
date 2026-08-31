@@ -34,6 +34,19 @@
       },
       "description": "Email addresses associated with business expense purchases and connected expense inboxes"
     },
+    "tracked_marketplaces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Vinted",
+          "Depop",
+          "Etsy",
+          "eBay"
+        ]
+      },
+      "description": "Marketplace sites this business has chosen for Art Flow to track"
+    },
     "spreadsheet_id": {
       "type": "string",
       "description": "Google Sheets spreadsheet used as the master Art Flow Creative tracker"
