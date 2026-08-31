@@ -307,6 +307,16 @@ export default async function handler(req, res) {
     const business = await getBusiness(client, profile, session.user);
     if (!business?.base44_id) return res.status(400).json({ error: 'No Art Flow business workspace was found.' });
 
+    const tracked = Array.isArray(business.data?.tracked_marketplaces)
+      ? business.data.tracked_marketplaces.filter((item) => ['Vinted', 'Depop', 'Etsy', 'eBay'].includes(item))
+      : [];
+    if (!tracked.includes(platform)) {
+      return res.status(409).json({
+        error: `${platform} is not selected in Sites I sell on. Turn it on in Account first.`,
+        code: 'MARKETPLACE_NOT_SELECTED',
+      });
+    }
+
     const spreadsheetId = getSpreadsheetId(business);
     if (!spreadsheetId) {
       return res.status(409).json({
