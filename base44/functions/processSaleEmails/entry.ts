@@ -4,7 +4,7 @@ import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 import { getGoogleSheetsAccessToken } from '../../shared/sheetsConnector.js';
 
 const START_DATE = '2026-01-01';
-const BATCH_SIZE = 150;
+const BATCH_SIZE = 500;
 const LEGACY_MIGRATION_BATCH = 150;
 const PARSER_VERSION = 3;
 
