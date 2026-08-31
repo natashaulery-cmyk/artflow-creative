@@ -8,6 +8,7 @@ import { appendOrdersToMasterSheet } from '../../shared/spreadsheetMaster.js';
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 500;
 const MARKETPLACE = /vinted|depop|etsy|ebay/i;
+const ALL_MARKETPLACES = ['Vinted', 'Depop', 'Etsy', 'eBay'];
 
 async function saveState(base44, ownerId, businessId, data) {
   if (!businessId) return;
@@ -38,6 +39,14 @@ export default async function(req) {
     workspace = await resolveBusinessWorkspace(base44, profile.email);
     const { ownerId, businessId, accessEmails = [] } = workspace;
     if (!ownerId || !businessId) return Response.json({ error: 'No business workspace found for this Outlook account' }, { status: 400 });
+    const enabledMarketplaces = workspace.marketplaceSelectionConfigured
+      ? workspace.trackedMarketplaces
+      : ALL_MARKETPLACES;
+    if (workspace.marketplaceSelectionConfigured && enabledMarketplaces.length === 0) {
+      const response = { provider: 'Outlook', connected_email: profile.email, found: 0, processed: 0, created: 0, skipped: 0, errors: 0, remaining: 0, message: 'Marketplace tracking is turned off. Choose selling sites in Account to resume sales sync.' };
+      await saveState(base44, ownerId, businessId, response);
+      return Response.json(response);
+    }
 
     const states = await base44.asServiceRole.entities.SyncState.list('-last_synced_at', 200).catch(() => []);
     const prior = states.find((x) => x.business_id === businessId && x.source === 'outlook_sales');
@@ -47,7 +56,12 @@ export default async function(req) {
       : new Date(`${START_DATE}T00:00:00.000Z`).toISOString();
 
     const messages = (await listOutlookMessages(accessToken, { sinceIso, maxMessages: 2000 }))
-      .filter((m) => MARKETPLACE.test(`${outlookSender(m)} ${m.subject || ''}`));
+      .filter((m) => {
+        const source = `${outlookSender(m)} ${m.subject || ''}`;
+        if (!MARKETPLACE.test(source)) return false;
+        const site = platformFromSender(source);
+        return !site || enabledMarketplaces.includes(site);
+      });
 
     const [orders, history, inventory] = await Promise.all([
       base44.asServiceRole.entities.Order.list('-created_date', 5000),
@@ -102,6 +116,11 @@ export default async function(req) {
         const saleTotal = Number(order?.sale_total);
         const quantity = Math.max(1, Number(order?.quantity) || 1);
         const platform = ['Vinted','Depop','Etsy','eBay'].includes(order?.platform) ? order.platform : inferredPlatform;
+        if (platform && !enabledMarketplaces.includes(platform)) {
+          await recordHistory(message.id, 'skipped', platform, `${platform} tracking is turned off`);
+          skipped++;
+          continue;
+        }
         if (!order?.is_sale || !order?.product_name || !Number.isFinite(saleTotal) || saleTotal <= 0 || !platform) {
           await recordHistory(message.id, 'skipped', platform, subject || 'Not a completed seller sale');
           skipped++;
