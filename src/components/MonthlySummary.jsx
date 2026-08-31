@@ -27,7 +27,7 @@ function Row({ label, value, isCount }) {
 }
 
 export default function MonthlySummary({ orders, expenses }) {
-  const [month, setMonth] = useState(currentMonthKey());
+  const [selectedMonths, setSelectedMonths] = useState([currentMonthKey()]);
 
   const months = useMemo(() => {
     const set = new Set();
@@ -49,9 +49,20 @@ export default function MonthlySummary({ orders, expenses }) {
     return [...set].filter(Boolean).sort().reverse();
   }, [orders, expenses]);
 
+  const toggleMonth = (monthKey) => {
+    setSelectedMonths((current) => {
+      if (current.includes(monthKey)) {
+        // Always keep at least one month selected so Statistics never becomes blank.
+        return current.length === 1 ? current : current.filter((key) => key !== monthKey);
+      }
+      return [...current, monthKey].sort().reverse();
+    });
+  };
+
   const calc = useMemo(() => {
-    const mo = orders.filter((o) => (o.sale_date || "").slice(0, 7) === month);
-    const me = expenses.filter((e) => (e.date || "").slice(0, 7) === month);
+    const selected = new Set(selectedMonths);
+    const mo = orders.filter((o) => selected.has((o.sale_date || "").slice(0, 7)));
+    const me = expenses.filter((e) => selected.has((e.date || "").slice(0, 7)));
     const grossSales = mo.reduce((s, o) => s + (o.sale_total || 0), 0);
     const productCosts = mo.reduce((s, o) => s + (o.total_cost || 0), 0);
     const bizExpenses = me.reduce((s, e) => s + (e.amount || 0), 0);
@@ -60,32 +71,46 @@ export default function MonthlySummary({ orders, expenses }) {
     const numOrders = mo.length;
     const itemsSold = mo.reduce((s, o) => s + (o.quantity || 0), 0);
     return { grossSales, productCosts, bizExpenses, totalCosts, netProfit, numOrders, itemsSold };
-  }, [orders, expenses, month]);
+  }, [orders, expenses, selectedMonths]);
+
+  const periodLabel = useMemo(() => {
+    if (selectedMonths.length === 1) return monthLabel(selectedMonths[0]);
+    const ordered = [...selectedMonths].sort();
+    if (ordered.length <= 3) return ordered.map(monthLabel).join(" + ");
+    return `${ordered.length} months combined`;
+  }, [selectedMonths]);
 
   const positive = calc.netProfit >= 0;
 
   return (
     <section className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {months.map((mk) => (
-          <button
-            key={mk}
-            onClick={() => setMonth(mk)}
-            className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
-              month === mk
-                ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                : "bg-muted text-foreground"
-            }`}
-          >
-            {monthLabel(mk)}
-          </button>
-        ))}
+      <div>
+        <p className="text-xs text-muted-foreground mb-2 px-1">Select one or more months to combine statistics.</p>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {months.map((mk) => {
+            const selected = selectedMonths.includes(mk);
+            return (
+              <button
+                key={mk}
+                onClick={() => toggleMonth(mk)}
+                aria-pressed={selected}
+                className={`px-4 h-9 rounded-full text-sm font-medium shrink-0 ${
+                  selected
+                    ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                    : "bg-muted text-foreground"
+                }`}
+              >
+                {monthLabel(mk)}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Net Profit · {monthLabel(month)}
+            Net Profit · {periodLabel}
           </p>
           {positive ? (
             <TrendingUp className="w-4 h-4 text-emerald-600" />
