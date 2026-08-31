@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { artflowAuthClient } from "@/lib/artflowAuthClient";
 
@@ -13,6 +14,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (event) => {
@@ -56,6 +58,19 @@ export default function Login() {
     }
   };
 
+  const handleGoogle = async () => {
+    setError("");
+    setGoogleLoading(true);
+    try {
+      const { base44 } = await import("@/api/base44Client");
+      const destination = `${window.location.origin}${returnTo}`;
+      await base44.auth.redirectToLogin(destination);
+    } catch (err) {
+      setError(err?.message || "Google sign-in is unavailable right now.");
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <AuthLayout
       icon={LogIn}
@@ -72,6 +87,23 @@ export default function Login() {
           {error}
         </div>
       )}
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-12 font-medium mb-4"
+        onClick={handleGoogle}
+        disabled={googleLoading || loading}
+      >
+        {googleLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GoogleIcon className="w-5 h-5 mr-2" />}
+        Continue with Google
+      </Button>
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-px bg-border flex-1" />
+        <span className="text-xs text-muted-foreground">or use email and password</span>
+        <div className="h-px bg-border flex-1" />
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
