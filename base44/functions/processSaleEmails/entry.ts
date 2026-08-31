@@ -664,6 +664,12 @@ export default async function(req) {
         const platform = ['Vinted', 'Depop', 'Etsy', 'eBay'].includes(order.platform)
           ? order.platform : inferredPlatform;
 
+        if (platform && !enabledMarketplaces.includes(platform)) {
+          await recordHistory(messageId, 'skipped', platform, `${platform} tracking is turned off`);
+          skipped++;
+          continue;
+        }
+
         if (!order.is_sale || !order.product_name || !Number.isFinite(saleTotal) || saleTotal <= 0) {
           await recordHistory(messageId, 'skipped', platform, subject || 'Not a completed seller sale');
           skipped++;
