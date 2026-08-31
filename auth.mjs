@@ -9,7 +9,7 @@ const vercelProductionURL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 const vercelDeploymentURL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "";
-const baseURL = process.env.BETTER_AUTH_URL || vercelProductionURL || "https://affordable-art-co-dashboard.vercel.app";
+const baseURL = process.env.BETTER_AUTH_URL || vercelProductionURL || "https://art-flow-creative-art-fed4.vercel.app";
 
 const socialProviders = {};
 
@@ -54,8 +54,6 @@ export const auth = betterAuth({
     baseURL,
     vercelProductionURL,
     vercelDeploymentURL,
-    "https://affordable-art-co-dashboard.vercel.app",
-    "https://affordable-art-co-dashboard-art-fed4.vercel.app",
     "https://art-flow-creative-staging.vercel.app",
     "https://art-flow-creative.vercel.app",
     "https://art-flow-creative-art-fed4.vercel.app",
