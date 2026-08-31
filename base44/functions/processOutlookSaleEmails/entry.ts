@@ -5,7 +5,7 @@ import { getOutlookConnection, getOutlookProfile, listOutlookMessages, outlookSe
 import { parseKnownSale, platformFromSender, sameSale, validDate } from '../../shared/marketplaceEmailParser.js';
 
 const START_DATE = '2026-01-01';
-const BATCH_SIZE = 150;
+const BATCH_SIZE = 500;
 const MARKETPLACE = /vinted|depop|etsy|ebay/i;
 
 async function saveState(base44, ownerId, businessId, data) {
