@@ -12,5 +12,5 @@ export const base44 = createClient({
   functionsVersion,
   serverUrl: backendUrl || 'https://base44.app',
   requiresAuth: false,
-  appBaseUrl: backendUrl || 'https://base44.app'
+  appBaseUrl: 'https://app.base44.com'
 });
