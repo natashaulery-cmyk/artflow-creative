@@ -1,12 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
+import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 const TAB_HEADERS = {
   Orders: ['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit'],
   Expenses: ['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID'],
-  Deductions: ['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID'],
   Inventory: ['Item','Size','Category','Base Item Cost','Paper & Ink Cost','Packaging Cost','Quantity On Hand','Low Stock Level','Notes'],
-  Summary: ['ArtFlow Spreadsheet Backup','Purpose'],
+  'Monthly Summary': ['Month','Sales','Expenses','Profit','Orders'],
 };
 
 async function sheetsFetch(accessToken, url, options = {}) {
@@ -31,8 +31,11 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
+    const businesses = await base44.asServiceRole.entities.Business.list('-updated_date', 500);
+    const business = businesses.find((item) => item.id === workspace.businessId);
     const body = await req.json().catch(() => ({}));
-    const spreadsheetId = String(body?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id || '').trim();
+    const spreadsheetId = String(body?.spreadsheetId || business?.spreadsheet_id || '').trim();
     if (!spreadsheetId) return Response.json({ error: 'Paste a Google Sheet link or spreadsheet ID first.' }, { status: 400 });
 
     let accessToken;
@@ -45,26 +48,6 @@ export default async function(req) {
     const root = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}`;
     const meta = await sheetsFetch(accessToken, `${root}?fields=properties.title,sheets.properties`);
     const existingTitles = new Set((meta.sheets || []).map((sheet) => sheet?.properties?.title).filter(Boolean));
-    const compatibleExistingTracker = existingTitles.has('💸 Expenditures / Materials');
-
-    // Preserve compatible third-party/reseller trackers. ArtFlow can read the
-    // existing Expenditures / Materials columns directly, so do not clutter a
-    // user's workbook with duplicate ArtFlow tabs unless they are actually needed.
-    if (compatibleExistingTracker) {
-      if (String(user.spreadsheet_id || '') !== spreadsheetId) {
-        await base44.auth.updateMe({ spreadsheet_id: spreadsheetId });
-      }
-      return Response.json({
-        ok: true,
-        spreadsheet_id: spreadsheetId,
-        created_tabs: [],
-        initialized_tabs: [],
-        untouched_tabs: Array.from(existingTitles),
-        compatible_existing_tracker: true,
-        message: 'Spreadsheet backup is connected. ArtFlow will use the existing Expenditures / Materials tab without changing your workbook layout.',
-      });
-    }
-
     const missing = Object.keys(TAB_HEADERS).filter((title) => !existingTitles.has(title));
 
     if (missing.length) {
@@ -85,9 +68,7 @@ export default async function(req) {
         continue;
       }
 
-      const values = title === 'Summary'
-        ? [headers, ['Keep this sheet connected to ArtFlow.','Marketplace APIs/webhooks and connected inboxes sync first. Expenses/Deductions are used only as a duplicate-safe fallback for anything ArtFlow misses.']]
-        : [headers];
+      const values = [headers];
       await sheetsFetch(accessToken, `${root}/values/${encodeURIComponent(title)}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
         method: 'POST',
         body: JSON.stringify({ values }),
@@ -95,8 +76,8 @@ export default async function(req) {
       initialized.push(title);
     }
 
-    if (String(user.spreadsheet_id || '') !== spreadsheetId) {
-      await base44.auth.updateMe({ spreadsheet_id: spreadsheetId });
+    if (business?.id && String(business.spreadsheet_id || '') !== spreadsheetId) {
+      await base44.asServiceRole.entities.Business.update(business.id, { spreadsheet_id: spreadsheetId });
     }
 
     return Response.json({
