@@ -9,7 +9,7 @@ const vercelProductionURL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 const vercelDeploymentURL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "";
-const baseURL = process.env.BETTER_AUTH_URL || vercelProductionURL || "https://artflowcreative.com";
+const baseURL = process.env.BETTER_AUTH_URL || vercelProductionURL || "https://artflowcreativeapp.com";
 
 const socialProviders = {};
 
@@ -57,8 +57,8 @@ export const auth = betterAuth({
     "https://art-flow-creative-staging.vercel.app",
     "https://art-flow-creative.vercel.app",
     "https://art-flow-creative-art-fed4.vercel.app",
-    "https://artflowcreative.com",
-    "https://www.artflowcreative.com",
+    "https://artflowcreativeapp.com",
+    "https://www.artflowcreativeapp.com",
     "https://appleid.apple.com",
   ].filter(Boolean),
 });
