@@ -45,12 +45,18 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const businesses = await base44.entities.Business.list('name', 100);
-      let business = businesses.find((b) => b.id === currentId);
-      if (!business) {
-        business = businesses.find((b) =>
-          (b.member_emails || []).some((member) => String(member).toLowerCase() === email)
-        );
-      }
+      const memberBusinesses = businesses.filter((b) =>
+        (b.member_emails || []).some((member) => String(member).toLowerCase() === email)
+        || (b.sales_emails || []).some((member) => String(member).toLowerCase() === email)
+        || (b.expense_emails || []).some((member) => String(member).toLowerCase() === email)
+        || String(b.primary_email || '').toLowerCase() === email
+      );
+      // Prefer the member workspace with a connected tracker. This prevents an
+      // older duplicate workspace or stale per-user sheet ID from splitting data.
+      let business = memberBusinesses.find((b) => String(b.spreadsheet_id || '').trim())
+        || memberBusinesses.find((b) => b.id === currentId)
+        || businesses.find((b) => b.id === currentId)
+        || null;
       if (!business) {
         business = await base44.entities.Business.create({
           name: currentUser.business_name || currentUser.data?.business_name || 'My Business',
@@ -72,8 +78,15 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      if (business?.id && currentId !== business.id) {
-        await base44.auth.updateMe({ active_business_id: business.id });
+      if (business?.id) {
+        const userUpdates = {};
+        if (currentId !== business.id) userUpdates.active_business_id = business.id;
+        if (business.spreadsheet_id && business.spreadsheet_id !== currentUser.spreadsheet_id) {
+          userUpdates.spreadsheet_id = business.spreadsheet_id;
+        }
+        if (Object.keys(userUpdates).length) {
+          await base44.auth.updateMe(userUpdates);
+        }
       }
       return business?.id || null;
     } catch (e) {
