@@ -1,9 +1,8 @@
-// Shared inventory import logic. Reads a Google Sheets tab and upserts
-// InventoryCost records by size, scoped to the current user (the function
-// passes a user-scoped base44 client, so creates/updates are owned by them).
+// Shared inventory import logic. Reads the business spreadsheet and upserts
+// InventoryCost records inside the active business workspace.
 import { calculateUnitCost } from './orderCost.js';
 
-export async function importInventory(base44, accessToken, spreadsheetId, sheetName) {
+export async function importInventory(base44, accessToken, spreadsheetId, sheetName, workspace = {}) {
   let tab = sheetName;
   if (!tab) {
     const metaRes = await fetch(
@@ -12,7 +11,10 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     );
     const meta = await metaRes.json();
     const tabs = (meta.sheets || []).map((s) => s.properties.title);
-    tab = tabs.find((t) => /^all items$/i.test(t)) || tabs.find((t) => /inventory|stock|cost|pieces/i.test(t)) || tabs[0];
+    tab = tabs.find((t) => /^inventory costs?$/i.test(t))
+      || tabs.find((t) => /inventory|stock|cost|pieces/i.test(t))
+      || tabs.find((t) => /^all items$/i.test(t))
+      || tabs[0];
     if (!tab) return Response.json({ error: 'No sheets found' }, { status: 400 });
   }
 
@@ -63,7 +65,14 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
   };
 
   const validCats = ['Frame', 'Print', 'Supply', 'Packaging', 'Other'];
-  const existing = await base44.entities.InventoryCost.list('size', 200);
+  const ownerId = workspace?.ownerId || null;
+  const businessId = workspace?.businessId || null;
+  const accessEmails = workspace?.accessEmails || [];
+  const allExisting = await base44.asServiceRole.entities.InventoryCost.list('size', 5000);
+  const existing = allExisting.filter((item) =>
+    (businessId && item.business_id === businessId)
+    || (ownerId && !item.business_id && item.created_by_id === ownerId)
+  );
   const byKey = new Map(existing.map((e) => [String(e.name || e.size || ''), e]));
 
   const toCreate = [];
@@ -97,6 +106,9 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
       record.image_url = String(row[idx.image]).trim();
     }
     record.total_unit_cost = calculateUnitCost(record);
+    if (businessId) record.business_id = businessId;
+    if (accessEmails.length) record.access_emails = accessEmails;
+    if (ownerId) record.created_by_id = ownerId;
 
     const prev = byKey.get(key);
     if (prev) {
@@ -110,12 +122,12 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
   let imported = 0;
   for (let i = 0; i < toCreate.length; i += 200) {
     const batch = toCreate.slice(i, i + 200);
-    await base44.entities.InventoryCost.bulkCreate(batch);
+    await base44.asServiceRole.entities.InventoryCost.bulkCreate(batch);
     imported += batch.length;
   }
   for (let i = 0; i < toUpdate.length; i += 200) {
     const batch = toUpdate.slice(i, i + 200);
-    await base44.entities.InventoryCost.bulkUpdate(batch);
+    await base44.asServiceRole.entities.InventoryCost.bulkUpdate(batch);
     imported += batch.length;
   }
 
