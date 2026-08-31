@@ -3,6 +3,8 @@ import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 import { getGoogleSheetsAccessToken } from '../../shared/sheetsConnector.js';
 import { appendExpensesToMasterSheet } from '../../shared/spreadsheetMaster.js';
 
+const BATCH_SIZE = 500;
+
 const decodeBytes = (value = '') => {
   const clean = value.replace(/-/g, '+').replace(/_/g, '/');
   return Uint8Array.from(atob(clean), (c) => c.charCodeAt(0));
@@ -120,7 +122,7 @@ export default async function(req) {
         .filter(Boolean)
     );
     const pendingIds = allIds.filter((id) => !completedIds.has(id));
-    const batch = pendingIds.slice(0, 150);
+    const batch = pendingIds.slice(0, BATCH_SIZE);
 
     const existing = await base44.asServiceRole.entities.Expense.list('-date', 5000);
 
