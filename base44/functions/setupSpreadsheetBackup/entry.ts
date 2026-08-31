@@ -3,17 +3,6 @@ import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 const TAB_VALUES = {
-  Guide: [
-    ['ArtFlow Creative Tracker — Quick Guide'],
-    [],
-    ['All Items', 'Track every item, condition, size, purchase info, listing status, sale platform, profit, box and bag location.'],
-    ['Orders', 'Sales pulled into ArtFlow. Bundles stay inside Orders as one order with the full bundle total.'],
-    ['Expenses', 'Business expenses pulled from connected email and supported sources. Receipt IDs help prevent duplicates.'],
-    ['Inventory Costs', 'Cost backup used by ArtFlow for size-based art, paper/ink, packaging, quantity on hand, and low-stock levels.'],
-    ['Taxes', 'Planning totals for gross sales, order costs, deductible expenses, estimated net income and tax reserve.'],
-    [],
-    ['Connection', 'ArtFlow uses marketplace/email sources first, then this spreadsheet as the fallback for missing Orders and Expenses. Keep the standard headers unchanged.'],
-  ],
   Dashboard: [
     ['ArtFlow Creative Dashboard'],
     ['Total Sales', '=SUM(Orders!H2:H)'],
