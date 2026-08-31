@@ -9,7 +9,8 @@ import MonthlySummary from "@/components/MonthlySummary";
 import TaxLiabilityTracker from "@/components/TaxLiabilityTracker";
 import ExportButton from "@/components/ExportButton";
 import PullToRefresh from "@/components/PullToRefresh";
-import { PLATFORMS, PLATFORM_BAR } from "@/lib/platforms";
+import { PLATFORM_BAR, displayPlatform } from "@/lib/platforms";
+import { useMarketplacePreferences } from "@/lib/useMarketplacePreferences";
 
 const cardLink = "block active:scale-95 transition-transform";
 
@@ -44,6 +45,11 @@ function inPeriod(dateStr, key) {
 export default function Reports() {
   const navigate = useNavigate();
   const { records: orders, reload: reloadOrders } = useOrders();
+  const { selected: trackedSites, configured: sitesConfigured } = useMarketplacePreferences();
+  const activeOrders = useMemo(
+    () => sitesConfigured ? orders.filter((o) => trackedSites.includes(displayPlatform(o.platform))) : [],
+    [orders, trackedSites, sitesConfigured]
+  );
   const { records: expenses, reload: reloadExpenses } = useEntity("Expense", "-created_date");
   const [period, setPeriod] = useState("thisMonth");
   const [taxRate] = useTaxRate();
@@ -52,7 +58,7 @@ export default function Reports() {
   };
 
   const calc = useMemo(() => {
-    const po = orders.filter((o) => inPeriod(o.sale_date, period));
+    const po = activeOrders.filter((o) => inPeriod(o.sale_date, period));
     const pe = expenses.filter((e) => inPeriod(e.date, period));
     const grossSales = po.reduce((s, o) => s + (o.sale_total || 0), 0);
     const numOrders = po.length;
@@ -76,7 +82,7 @@ export default function Reports() {
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount);
 
-    const platformSales = PLATFORMS.map((p) => ({
+    const platformSales = trackedSites.map((p) => ({
       platform: p,
       sales: po
         .filter((o) => o.platform === p)
@@ -97,7 +103,7 @@ export default function Reports() {
       taxReserve,
       platformSales,
     };
-  }, [orders, expenses, period, taxRate]);
+  }, [activeOrders, expenses, period, taxRate, trackedSites]);
 
   const maxPlatform = Math.max(...calc.platformSales.map((p) => p.sales), 1);
 
@@ -108,12 +114,12 @@ export default function Reports() {
         title="Reports"
         subtitle="Performance over time"
         onBack={() => navigate(-1)}
-        right={<ExportButton orders={orders} expenses={expenses} />}
+        right={<ExportButton orders={activeOrders} expenses={expenses} />}
       />
 
-      <MonthlySummary orders={orders} expenses={expenses} />
+      <MonthlySummary orders={activeOrders} expenses={expenses} />
 
-      <TaxLiabilityTracker orders={orders} expenses={expenses} taxRate={taxRate} />
+      <TaxLiabilityTracker orders={activeOrders} expenses={expenses} taxRate={taxRate} />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         {periods.map((p) => (
@@ -164,6 +170,7 @@ export default function Reports() {
 
       <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))]">
         <h2 className="font-heading text-lg mb-4">Sales Split</h2>
+        {calc.platformSales.length === 0 && <EmptyRow text="Choose your selling sites in Account" />}
         {calc.platformSales.map(({ platform, sales }) => (
           <PlatformBar
             key={platform}
