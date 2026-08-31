@@ -11,10 +11,12 @@ import EtsyConnectionCard from "@/components/EtsyConnectionCard";
 import VintedConnectionCard from "@/components/VintedConnectionCard";
 import EmailConnectionsCard from "@/components/EmailConnectionsCard";
 import TrackerSetupCard from "@/components/TrackerSetupCard";
+import MarketplaceTrackingCard from "@/components/MarketplaceTrackingCard";
 import BrowserSyncCard from "@/components/BrowserSyncCard";
 import DepopConnectionCard from "@/components/DepopConnectionCard";
 import EbayConnectionCard from "@/components/EbayConnectionCard";
 import { toast } from "sonner";
+import { useMarketplacePreferences } from "@/lib/useMarketplacePreferences";
 
 export default function Account() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export default function Account() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const { selected: trackedSites, loading: loadingTrackedSites } = useMarketplacePreferences();
 
   const handleDelete = async () => {
     if (confirmText !== "DELETE") return;
@@ -58,19 +61,21 @@ export default function Account() {
 
       <BusinessManager />
 
+      <MarketplaceTrackingCard />
+
       <TrackerSetupCard />
 
       <EmailConnectionsCard />
 
-      <BrowserSyncCard />
+      {!loadingTrackedSites && (trackedSites.includes("Vinted") || trackedSites.includes("Depop")) && <BrowserSyncCard />}
 
-      <EtsyConnectionCard />
+      {!loadingTrackedSites && trackedSites.includes("Etsy") && <EtsyConnectionCard />}
 
-      <VintedConnectionCard />
+      {!loadingTrackedSites && trackedSites.includes("Vinted") && <VintedConnectionCard />}
 
-      <DepopConnectionCard />
+      {!loadingTrackedSites && trackedSites.includes("Depop") && <DepopConnectionCard />}
 
-      <EbayConnectionCard />
+      {!loadingTrackedSites && trackedSites.includes("eBay") && <EbayConnectionCard />}
 
       <ThemeSettings />
 
