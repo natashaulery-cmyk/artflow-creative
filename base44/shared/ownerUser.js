@@ -80,6 +80,7 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
     businessId: business?.id || null,
     email: emailHint || user.email || null,
     accessEmails: Array.from(new Set(accessEmails)),
+    spreadsheetId: String(business?.spreadsheet_id || '').trim(),
   };
 }
 
