@@ -63,23 +63,26 @@ export default function Orders() {
         }
       }
 
-      let res = await base44.functions.invoke("processSaleEmails", {});
-      let data = res?.data || {};
-      let pass = 0;
-
-      // Keep draining bounded backend batches so a user with hundreds of older
-      // orders does not have to press Sync repeatedly or wait minutes between runs.
-      while (Number(data.remaining || 0) > 0 && pass < 12) {
-        if (/already running/i.test(String(data.message || ""))) break;
-        await reloadOrders();
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        res = await base44.functions.invoke("processSaleEmails", {});
-        data = res?.data || {};
-        pass += 1;
-      }
-
       const emailMessages = [];
-      if (data.message) emailMessages.push(data.message);
+      try {
+        let res = await base44.functions.invoke("processSaleEmails", {});
+        let data = res?.data || {};
+        let pass = 0;
+
+        // Keep draining bounded backend batches so a user with hundreds of older
+        // orders does not have to press Sync repeatedly or wait minutes between runs.
+        while (Number(data.remaining || 0) > 0 && pass < 12) {
+          if (/already running/i.test(String(data.message || ""))) break;
+          await reloadOrders();
+          await new Promise((resolve) => window.setTimeout(resolve, 500));
+          res = await base44.functions.invoke("processSaleEmails", {});
+          data = res?.data || {};
+          pass += 1;
+        }
+        if (data.message) emailMessages.push(data.message);
+      } catch {
+        // Gmail is optional. Spreadsheet/direct sources must still get a chance.
+      }
 
       // Microsoft/Outlook is an independent per-user inbox. If it is not
       // connected yet, its failure is non-blocking and Gmail/direct APIs still
