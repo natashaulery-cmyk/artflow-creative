@@ -73,7 +73,8 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     (businessId && item.business_id === businessId)
     || (ownerId && !item.business_id && item.created_by_id === ownerId)
   );
-  const byKey = new Map(existing.map((e) => [String(e.name || e.size || ''), e]));
+  const inventoryKey = (name, size) => String(size || name || '').trim().toLowerCase();
+  const byKey = new Map(existing.map((e) => [inventoryKey(e.name, e.size), e]));
 
   const toCreate = [];
   const toUpdate = [];
@@ -83,7 +84,7 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     const row = rows[r];
     const name = idx.name >= 0 ? String(row[idx.name] || '').trim() : '';
     const size = idx.size >= 0 ? String(row[idx.size] || '').trim() : '';
-    const key = name || size;
+    const key = inventoryKey(name, size);
     if (!key) {
       skipped++;
       continue;
