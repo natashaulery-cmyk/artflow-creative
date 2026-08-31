@@ -1,8 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 import { getOutlookConnection, getOutlookProfile, listOutlookMessages, listOutlookFileAttachments, outlookSender, outlookBody, outlookDate, decodeBase64Bytes } from '../../shared/outlookMail.js';
+import { appendExpensesToMasterSheet } from '../../shared/spreadsheetMaster.js';
 
-const BATCH_SIZE = 150;
+const BATCH_SIZE = 500;
 const EXPENSE_HINT = /artflow expense|receipt|ordered|order confirmation|order received|purchase confirmation|invoice|payment successful|payment received|your order|subscription|renewal|shipping label/i;
 const categories = [
   'Art Materials & Supplies',
@@ -73,6 +74,7 @@ export default async function(req) {
     const seenReceiptIds = new Set(existingExpenses.filter((e) => !e.archived && e.business_id === businessId).map((e) => e.receipt_id).filter(Boolean));
 
     let created = 0, skipped = 0, errors = 0;
+    const createdForSheet = [];
     const recordHistory = async (messageId, status, details) => {
       const id = `outlook:${messageId}`;
       const payload = { message_id: id, import_type: 'expense', status, platform: 'Outlook', details: String(details || '').slice(0, 500), business_id: businessId };
@@ -148,7 +150,7 @@ export default async function(req) {
           const deductiblePercent = Math.min(100, Math.max(0, Number(expense.deductible_percent) || 100));
           const category = categories.includes(expense.category) ? expense.category : 'Other Business Expense';
 
-          await base44.asServiceRole.entities.Expense.create({
+          const createdExpense = await base44.asServiceRole.entities.Expense.create({
             business_id: businessId,
             access_emails: accessEmails,
             date,
@@ -165,6 +167,7 @@ export default async function(req) {
             confidence,
             created_by_id: ownerId,
           });
+          createdForSheet.push(createdExpense);
           seenReceiptIds.add(receiptId);
           created++;
           messageCreated++;
@@ -176,9 +179,20 @@ export default async function(req) {
       }
     }
 
+    let emailSheetAppended = 0;
+    try {
+      if (createdForSheet.length) {
+        const writeResult = await appendExpensesToMasterSheet(base44, workspace, createdForSheet);
+        emailSheetAppended = Number(writeResult?.appended || 0);
+      }
+    } catch {
+      // Keep the Outlook expense in Art Flow if Sheets is temporarily unavailable;
+      // the next reconciliation pass can retry persistence safely.
+    }
+
     const remaining = Math.max(0, pending.length - batch.length);
     const message = created ? `Synced ${created} Outlook expense${created === 1 ? '' : 's'}${remaining ? ` · ${remaining} emails left` : ''}` : remaining ? `Checked ${batch.length} Outlook emails · ${remaining} left` : 'Outlook business expenses are up to date';
-    const response = { provider:'Outlook', connected_email:profile.email, found:messages.length, processed:batch.length, created, skipped, errors, remaining, message };
+    const response = { provider:'Outlook', connected_email:profile.email, found:messages.length, processed:batch.length, created, email_sheet_appended:emailSheetAppended, skipped, errors, remaining, message };
     await saveState(base44, ownerId, businessId, { ...response, status: errors ? 'error' : 'ok' });
     return Response.json(response);
   } catch (e) {
