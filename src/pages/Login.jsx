@@ -7,7 +7,6 @@ import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
-import { artflowAuthClient } from "@/lib/artflowAuthClient";
 
 export default function Login() {
   const returnTo = safeReturnTo();
@@ -22,35 +21,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      // Use the Base44-backed Art Flow session first because the live spreadsheet,
-      // Gmail/Outlook, and business-workspace sync functions are currently tied
-      // to that authenticated session. Neon stays available as a compatibility
-      // fallback while the remaining server APIs are migrated.
-      try {
-        const { base44 } = await import("@/api/base44Client");
-        await base44.auth.loginViaEmailPassword(email.trim(), password);
-        window.location.href = returnTo;
-        return;
-      } catch (base44Error) {
-        let neonError = null;
-        try {
-          const result = await artflowAuthClient.signIn.email({
-            email: email.trim(),
-            password,
-            rememberMe: true,
-          });
-          neonError = result?.error || null;
-          if (!neonError) {
-            window.location.href = returnTo;
-            return;
-          }
-        } catch (error) {
-          neonError = error;
-        }
-        throw new Error(
-          neonError?.message || base44Error?.message || "Email or password is incorrect."
-        );
-      }
+      const { base44 } = await import("@/api/base44Client");
+      await base44.auth.loginViaEmailPassword(email.trim(), password);
+      window.location.href = returnTo;
     } catch (err) {
       setError(err?.message || "Could not sign in. Check your email and password.");
     } finally {
