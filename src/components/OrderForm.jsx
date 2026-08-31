@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { calculateOrderCosts } from "@/lib/orderCost";
 import { getCurrentBusinessWorkspace } from "@/lib/businessWorkspace";
-import { PLATFORMS } from "@/lib/platforms";
+import { useMarketplacePreferences } from "@/lib/useMarketplacePreferences";
 import { toast } from "sonner";
 import Field from "@/components/Field";
 
@@ -23,13 +23,26 @@ const empty = {
 };
 
 export default function OrderForm({ open, onClose, inventoryCosts }) {
+  const { selected: trackedSites } = useMarketplacePreferences();
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  useEffect(() => {
+    if (!open) return;
+    setForm((current) => ({
+      ...current,
+      platform: trackedSites.includes(current.platform) ? current.platform : (trackedSites[0] || ""),
+    }));
+  }, [open, trackedSites.join("|")]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.platform || !trackedSites.includes(form.platform)) {
+      toast.error("Choose a marketplace in Account first");
+      return;
+    }
     if (!form.product_name || !form.unit_price) {
       toast.error("Add product name and sale price");
       return;
@@ -107,7 +120,7 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                {PLATFORMS.map((p) => (
+                {trackedSites.map((p) => (
                   <button
                     key={p}
                     type="button"
@@ -121,6 +134,9 @@ export default function OrderForm({ open, onClose, inventoryCosts }) {
                     {p}
                   </button>
                 ))}
+                {trackedSites.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Choose your selling sites in Account before adding an order.</p>
+                )}
               </div>
               <Field label="Product Name">
                 <input
