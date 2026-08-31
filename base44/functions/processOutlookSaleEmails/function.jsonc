@@ -1,4 +1,15 @@
 {
   "name": "processOutlookSaleEmails",
-  "entry": "entry.ts"
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Sync Outlook marketplace sales every 5 minutes",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "*/5 * * * *",
+      "description": "Import completed Vinted, Depop, Etsy, and eBay sales from connected Microsoft/Outlook email",
+      "is_active": true
+    }
+  ]
 }
