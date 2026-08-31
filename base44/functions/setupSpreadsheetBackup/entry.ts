@@ -9,7 +9,10 @@ const TAB_VALUES = {
     ['All Items', 'Track every item, condition, size, purchase info, listing status, sale platform, profit, box and bag location.'],
     ['Orders', 'Sales pulled into ArtFlow. Bundles stay inside Orders as one order with the full bundle total.'],
     ['Expenses', 'Business expenses pulled from connected email and supported sources. Receipt IDs help prevent duplicates.'],
+    ['Inventory Costs', 'Cost backup used by ArtFlow for size-based art, paper/ink, packaging, quantity on hand, and low-stock levels.'],
     ['Taxes', 'Planning totals for gross sales, order costs, deductible expenses, estimated net income and tax reserve.'],
+    [],
+    ['Connection', 'ArtFlow uses marketplace/email sources first, then this spreadsheet as the fallback for missing Orders and Expenses. Keep the standard headers unchanged.'],
   ],
   Dashboard: [
     ['ArtFlow Creative Dashboard'],
@@ -28,6 +31,15 @@ const TAB_VALUES = {
   ],
   Orders: [['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit','Source URL']],
   Expenses: [['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID']],
+  'Inventory Costs': [
+    ['Category','Item Name','Size','Base Item Cost','Paper & Ink','Packaging Cost','Total Unit Cost','Quantity On Hand','Low Stock Level','Notes'],
+    ['Frame','Framed Print','4x4',1.00,0.09,0.40,'=SUM(D2:F2)',0,5,'Default art cost'],
+    ['Frame','Framed Print','4x6',1.25,0.09,0.40,'=SUM(D3:F3)',0,5,'Default art cost'],
+    ['Frame','Framed Print','5x7',1.50,0.09,0.40,'=SUM(D4:F4)',0,5,'Default art cost'],
+    ['Frame','Framed Print','8x8',2.00,0.09,0.40,'=SUM(D5:F5)',0,5,'Default art cost'],
+    ['Frame','Framed Print','8x10',2.00,0.09,0.40,'=SUM(D6:F6)',0,5,'Default art cost'],
+    ['Frame','Framed Print','11x14',3.00,0.09,2.00,'=SUM(D7:F7)',0,5,'Large mailing box'],
+  ],
   Taxes: [
     ['ArtFlow Tax Summary'],
     ['Gross Sales', '=SUM(Orders!H2:H)'],
