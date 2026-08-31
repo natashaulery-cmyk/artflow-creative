@@ -69,21 +69,42 @@ export default async function(req) {
       return await importArtPieces(base44, accessToken, spreadsheetId, sheetName);
     }
 
-    const range = sheetName ? `${sheetName}!A:Z` : 'A:Z';
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!res.ok) {
-      return Response.json({ error: 'Sheets API error: ' + (await res.text()) }, { status: 502 });
+    // The ArtFlow master template uses styled tab names. Keep compatibility
+    // with older trackers that used a plain "Orders" tab.
+    const requestedSheet = String(sheetName || '').trim();
+    const orderSheetCandidates = Array.from(new Set([
+      requestedSheet,
+      requestedSheet === 'Orders' || !requestedSheet ? '🛍️ Orders' : '',
+      'Orders',
+    ].filter(Boolean)));
+    let rows = [];
+    let resolvedSheetName = '';
+    let lastSheetError = '';
+    for (const candidate of orderSheetCandidates) {
+      const range = `${candidate}!A:Z`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (res.ok) {
+        const data = await res.json();
+        rows = data.values || [];
+        resolvedSheetName = candidate;
+        break;
+      }
+      lastSheetError = await res.text();
+      if (res.status !== 400 && res.status !== 404) {
+        return Response.json({ error: 'Sheets API error: ' + lastSheetError }, { status: 502 });
+      }
     }
-    const data = await res.json();
-    const rows = data.values || [];
+    if (!resolvedSheetName) {
+      return Response.json({ error: `Could not find the Orders tab in the connected tracker. ${lastSheetError}` }, { status: 502 });
+    }
     if (rows.length < 2) {
       return Response.json({ imported: 0, skipped: 0, message: 'Empty sheet' });
     }
 
     let headerRowIndex = 0;
     for (let i = 0; i < Math.min(6, rows.length); i++) {
-      if (rows[i].some((c) => /product name|sale date/i.test(String(c || '')))) {
+      if (rows[i].some((c) => /what sold|product name|sale date/i.test(String(c || '')))) {
         headerRowIndex = i;
         break;
       }
@@ -96,26 +117,35 @@ export default async function(req) {
       }
       return -1;
     };
-    const costIdx = headers.findIndex(
-      (h) => /cost/i.test(h) && !/sale/i.test(h)
-    );
-    const priceIdx = (() => {
-      for (const n of ['price', 'sale', 'unit_price', 'amount', 'total']) {
-        const i = headers.findIndex((h, j) => j !== costIdx && h.includes(n));
+    const exactColIndex = (names) => {
+      for (const name of names) {
+        const i = headers.findIndex((h) => h === name);
         if (i >= 0) return i;
       }
       return -1;
-    })();
+    };
+    const costIdx = exactColIndex(['purchase price', 'item cost', 'cost']);
+    const priceIdx = exactColIndex(['gross sale price', 'sale price', 'unit price', 'price', 'amount', 'total']);
+    const profitIdx = exactColIndex(['net profit', 'estimated profit', 'profit']);
+    const feesIdx = exactColIndex(['fees', 'fee']);
+    const shippingIdx = exactColIndex(['shipping cost', 'shipping']);
+    const soldIdx = exactColIndex(['sold?', 'sold']);
     const idx = {
-      product: colIndex(['product', 'item', 'title', 'name']),
+      product: colIndex(['what sold', 'product', 'item', 'title', 'name']),
       size: colIndex(['size']),
       quantity: colIndex(['quantity', 'qty']),
       price: priceIdx,
       platform: colIndex(['platform', 'site']),
       date: colIndex(['date', 'sale_date']),
       buyer: colIndex(['buyer', 'customer', 'name']),
-      orderId: colIndex(['order', 'order_id', 'id']),
+      // The Exact Style tracker uses # as a display sequence, not a marketplace
+      // order id, so only explicit order-id headers are treated as identifiers.
+      orderId: exactColIndex(['order id', 'order_id', 'order number', 'order #']),
       cost: costIdx,
+      profit: profitIdx,
+      fees: feesIdx,
+      shipping: shippingIdx,
+      sold: soldIdx,
     };
 
     const { ownerId, businessId, accessEmails = [] } = workspace;
