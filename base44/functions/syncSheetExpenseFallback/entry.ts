@@ -142,7 +142,10 @@ export default async function(req) {
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const spreadsheetId = String(body?.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id || '').trim();
+    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
+    const spreadsheetId = String(
+      body?.spreadsheetId || workspace.spreadsheetId || user.spreadsheet_id || user.data?.spreadsheet_id || ''
+    ).trim();
     if (!spreadsheetId) {
       return Response.json({ available: true, connected: false, needs_sheet: true, message: 'Add your Google Sheet in Account to use spreadsheet expense backup.' });
     }
@@ -154,7 +157,6 @@ export default async function(req) {
       return Response.json({ available: true, connected: false, needs_connection: true, message: 'Connect Google Sheets in Account to use spreadsheet expense backup.' });
     }
 
-    const workspace = await resolveBusinessWorkspace(base44, user.email || '');
     const { ownerId, businessId, accessEmails = [] } = workspace;
     if (!ownerId || !businessId) return Response.json({ error: 'No business workspace found.' }, { status: 400 });
 
