@@ -35,9 +35,10 @@ export default function Login() {
     setError("");
     setGoogleLoading(true);
     try {
-      const { base44 } = await import("@/api/base44Client");
       const destination = `${window.location.origin}${returnTo}`;
-      base44.auth.loginWithProvider("google", destination);
+      const appId = import.meta.env.VITE_BASE44_APP_ID || "6a91be5ced6058323eb21f7d";
+      const googleLoginUrl = `https://app.base44.com/api/apps/auth/login?app_id=${encodeURIComponent(appId)}&from_url=${encodeURIComponent(destination)}`;
+      window.location.assign(googleLoginUrl);
     } catch (err) {
       setError(err?.message || "Google sign-in is unavailable right now.");
       setGoogleLoading(false);
