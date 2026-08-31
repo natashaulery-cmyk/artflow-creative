@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Art Flow Browser Sync</title>
+  <style>
+    *{box-sizing:border-box} body{font-family:Arial,sans-serif;margin:0;width:360px;background:#faf9fc;color:#1c1b20}.wrap{padding:16px}.title{font-size:20px;font-weight:700;margin:0}.sub{font-size:12px;color:#6b6872;margin:5px 0 14px;line-height:1.4}.box{background:white;border:1px solid #e5e1ea;border-radius:16px;padding:12px;margin-bottom:12px}.label{font-size:11px;font-weight:700;text-transform:uppercase;color:#706b78;margin:9px 0 5px}.label:first-child{margin-top:0}input,select{width:100%;height:38px;border:1px solid #d9d4df;border-radius:10px;padding:0 10px;background:white;font-size:13px}button{width:100%;height:42px;border:0;border-radius:12px;background:#7057b7;color:white;font-weight:700;cursor:pointer;margin-top:10px}button.secondary{background:#ece8f3;color:#29242f}button:disabled{opacity:.55;cursor:default}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.status{font-size:12px;line-height:1.4;padding:10px;border-radius:10px;background:#f0edf6;color:#524b5c;margin-top:10px}.ok{background:#e8f6ed;color:#21613a}.bad{background:#fbeaea;color:#8b2929}.tiny{font-size:11px;color:#746e79;line-height:1.35;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">Art Flow Browser Sync</h1>
+    <p class="sub">Review the sold-order details, then send them to your ArtFlow Creative Tracker.</p>
+
+    <div class="box">
+      <div class="label">Private Art Flow sync key</div>
+      <input id="syncKey" type="password" autocomplete="off" placeholder="Paste key from Art Flow Account" />
+      <button id="saveKey" class="secondary">Save key on this computer</button>
+      <div class="tiny">This extension never asks for or sends your Vinted/Depop password, cookies, or login tokens.</div>
+    </div>
+
+    <div class="box">
+      <div class="label">Platform</div>
+      <select id="platform"><option value="Vinted">Vinted</option><option value="Depop">Depop</option></select>
+      <div class="label">Product</div>
+      <input id="product" placeholder="Product name" />
+      <div class="row">
+        <div><div class="label">Sale total</div><input id="total" inputmode="decimal" placeholder="0.00" /></div>
+        <div><div class="label">Quantity</div><input id="quantity" inputmode="numeric" value="1" /></div>
+      </div>
+      <div class="row">
+        <div><div class="label">Order ID</div><input id="orderId" placeholder="Optional" /></div>
+        <div><div class="label">Sale date</div><input id="saleDate" type="date" /></div>
+      </div>
+      <div class="label">Buyer</div>
+      <input id="buyer" placeholder="Optional" />
+      <button id="capture">Send sale to Art Flow</button>
+      <button id="reread" class="secondary">Read this page again</button>
+      <div id="status" class="status">Open a Vinted or Depop sold/order page, then review the fields above.</div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
