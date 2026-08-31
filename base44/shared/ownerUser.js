@@ -53,6 +53,7 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
       member_emails: user.email ? [user.email] : [],
       sales_emails: user.email ? [user.email] : [],
       expense_emails: user.email ? [user.email] : [],
+      tracked_marketplaces: [],
       created_by_id: user.id,
     });
   } else if (email && !(business.member_emails || []).some((member) => lower(member) === email)) {
@@ -87,6 +88,10 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
     email: emailHint || user.email || null,
     accessEmails: Array.from(new Set(accessEmails)),
     spreadsheetId: String(business?.spreadsheet_id || '').trim(),
+    trackedMarketplaces: Array.isArray(business?.tracked_marketplaces)
+      ? business.tracked_marketplaces.filter((item) => ['Vinted', 'Depop', 'Etsy', 'eBay'].includes(item))
+      : [],
+    marketplaceSelectionConfigured: Array.isArray(business?.tracked_marketplaces),
   };
 }
 
