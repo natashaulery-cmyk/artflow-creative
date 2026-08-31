@@ -10,11 +10,15 @@ export async function getCurrentBusinessWorkspace() {
   let business = null;
   try {
     const businesses = await base44.entities.Business.list("name", 100);
-    business = businesses.find((b) => b.id === businessId)
-      || businesses.find((b) =>
-        (b.sales_emails || []).some((item) => normalizeEmail(item) === email)
-        || (b.member_emails || []).some((item) => normalizeEmail(item) === email)
-      )
+    // Email membership is the source of truth. This prevents an older/stale
+    // active_business_id from sending the user into a duplicate workspace.
+    business = businesses.find((b) =>
+      (b.sales_emails || []).some((item) => normalizeEmail(item) === email)
+      || (b.expense_emails || []).some((item) => normalizeEmail(item) === email)
+      || (b.member_emails || []).some((item) => normalizeEmail(item) === email)
+      || normalizeEmail(b.primary_email) === email
+    )
+      || businesses.find((b) => b.id === businessId)
       || null;
   } catch {}
 
@@ -30,6 +34,7 @@ export async function getCurrentBusinessWorkspace() {
   const accessEmails = Array.from(new Set([
     ...(business?.member_emails || []),
     ...(business?.sales_emails || []),
+    ...(business?.expense_emails || []),
     business?.primary_email,
     me?.email,
   ].map(normalizeEmail).filter(Boolean)));
