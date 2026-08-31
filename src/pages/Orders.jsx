@@ -11,11 +11,17 @@ import { useModalRoute } from "@/hooks/useModalRoute";
 import { useLocation, useNavigate } from "react-router-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import SyncStatus from "@/components/SyncStatus";
-import { PLATFORMS, PLATFORM_TONE, displayPlatform, displayProductName, orderSourceUrl } from "@/lib/platforms";
+import { PLATFORM_TONE, displayPlatform, displayProductName, orderSourceUrl } from "@/lib/platforms";
+import { useMarketplacePreferences } from "@/lib/useMarketplacePreferences";
 import { toast } from "sonner";
 
 export default function Orders() {
   const { records: orders, reload: reloadOrders } = useOrders();
+  const { selected: trackedSites, configured: sitesConfigured, loading: sitesLoading } = useMarketplacePreferences();
+  const activeOrders = useMemo(
+    () => sitesConfigured ? orders.filter((o) => trackedSites.includes(displayPlatform(o.platform))) : [],
+    [orders, trackedSites, sitesConfigured]
+  );
   const { records: inventoryCosts } = useEntity("InventoryCost", "size");
   const refresh = async () => { await reloadOrders(); };
   const { pathname } = useLocation();
@@ -110,15 +116,15 @@ export default function Orders() {
   // instead of a hardcoded January start.
   const months = useMemo(() => {
     const set = new Set([currentMonthKey()]);
-    orders.forEach((o) => {
+    activeOrders.forEach((o) => {
       if (o.sale_date) set.add(o.sale_date.slice(0, 7));
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [orders]);
+  }, [activeOrders]);
 
   const isBundle = (o) => /bundle/i.test(o.product_name || "");
   const filtered = useMemo(() => {
-    return orders
+    return activeOrders
       .filter((o) => {
         if (platformFilter === "Bundles") {
           if (!isBundle(o)) return false;
@@ -132,7 +138,7 @@ export default function Orders() {
         return true;
       })
       .sort((a, b) => (b.sale_date || "").localeCompare(a.sale_date || ""));
-  }, [orders, platformFilter, monthFilter, search]);
+  }, [activeOrders, platformFilter, monthFilter, search]);
 
   const summary = useMemo(() => {
     const sales = filtered.reduce((s, o) => s + (o.sale_total || 0), 0);
@@ -145,7 +151,7 @@ export default function Orders() {
     <div className="space-y-5">
       <PullToRefresh onRefresh={refresh} />
       <PageHeader title="Orders" subtitle="Sold items across platforms" />
-      <SyncStatus totalOrders={orders.length} />
+      <SyncStatus totalOrders={activeOrders.length} />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
         <button
@@ -218,7 +224,7 @@ export default function Orders() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-        {["All", ...PLATFORMS, "Bundles"].map((p) => (
+        {["All", ...trackedSites, "Bundles"].map((p) => (
           <button
             key={p}
             onClick={() => setPlatformFilter(p)}
@@ -233,8 +239,14 @@ export default function Orders() {
         ))}
       </div>
 
+      {!sitesLoading && !sitesConfigured && (
+        <div className="rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
+          Choose the marketplaces you sell on in Account before starting sales tracking.
+        </div>
+      )}
+
       <div className="space-y-2">
-        {filtered.length === 0 && <EmptyRow text="No orders match your filters" />}
+        {filtered.length === 0 && sitesConfigured && <EmptyRow text="No orders match your filters" />}
         {filtered.map((o) => {
           const sourceUrl = orderSourceUrl(o);
           return (
