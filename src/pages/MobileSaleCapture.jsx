@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { artflowAuthClient } from "@/lib/artflowAuthClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useMarketplacePreferences } from "@/lib/useMarketplacePreferences";
 import { toast } from "sonner";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -153,6 +154,7 @@ const parseDetails = ({ text = "", url = "", title = "" }) => {
 export default function MobileSaleCapture() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selected: trackedSites, configured: sitesConfigured } = useMarketplacePreferences();
   const [params] = useSearchParams();
   const incomingUrl = params.get("url") || "";
   const incomingText = params.get("text") || "";
@@ -173,12 +175,15 @@ export default function MobileSaleCapture() {
   const [saved, setSaved] = useState(false);
   const [googleNeeded, setGoogleNeeded] = useState(false);
 
-  const canSave = useMemo(() => !!platform && !!productName.trim() && Number(saleTotal) > 0 && !saving, [platform, productName, saleTotal, saving]);
+  const canSave = useMemo(
+    () => sitesConfigured && trackedSites.includes(platform) && !!productName.trim() && Number(saleTotal) > 0 && !saving,
+    [sitesConfigured, trackedSites, platform, productName, saleTotal, saving]
+  );
 
   const autoFill = (text, explicitUrl = "", explicitTitle = "") => {
     const parsed = parseDetails({ text, url: explicitUrl || sourceUrl, title: explicitTitle });
     setPastedText(String(text || ""));
-    if (parsed.platform) setPlatform(parsed.platform);
+    if (parsed.platform && trackedSites.includes(parsed.platform)) setPlatform(parsed.platform);
     if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
     if (parsed.productName) setProductName(parsed.productName);
     if (parsed.saleTotal) setSaleTotal(parsed.saleTotal);
@@ -306,12 +311,15 @@ export default function MobileSaleCapture() {
             <label className="text-xs font-semibold text-muted-foreground">Platform</label>
             <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="form-input mt-1">
               <option value="">Auto-detect / choose</option>
-              <option value="Vinted">Vinted</option>
-              <option value="Depop">Depop</option>
-              <option value="Etsy">Etsy</option>
-              <option value="eBay">eBay</option>
+              {trackedSites.map((site) => <option key={site} value={site}>{site}</option>)}
             </select>
           </div>
+
+          {!sitesConfigured && (
+            <div className="rounded-2xl bg-muted p-3 text-sm text-muted-foreground">
+              Choose the marketplaces you sell on in Account before sending a sale.
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-muted-foreground">Product name</label>
