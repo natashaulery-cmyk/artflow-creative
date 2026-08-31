@@ -68,8 +68,6 @@ export const auth = betterAuth({
     "https://art-flow-creative-art-fed4.vercel.app",
     "https://artflowcreativeapp.com",
     "https://www.artflowcreativeapp.com",
-    "https://artflowcreative.com",
-    "https://www.artflowcreative.com",
     "https://appleid.apple.com",
   ].filter(Boolean),
 });
