@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle2, Link2, Mail, RefreshCw, Table2, AlertCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
 
 const extractSheetId = (value = "") => {
@@ -10,6 +11,7 @@ const extractSheetId = (value = "") => {
 };
 
 export default function EmailConnectionsCard() {
+  const { user } = useAuth();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState("");
@@ -98,8 +100,8 @@ export default function EmailConnectionsCard() {
   return (
     <section className="bg-card rounded-3xl p-5 border border-[hsl(var(--border))] space-y-4">
       <div>
-        <h2 className="font-heading text-lg flex items-center gap-2"><Link2 className="w-5 h-5" /> Email & Spreadsheet Connections</h2>
-        <p className="text-sm text-muted-foreground mt-1">Connected inboxes are checked for both sales and business expenses. Google Sheets fills in anything the inbox/API sync misses.</p>
+        <h2 className="font-heading text-lg flex items-center gap-2"><Link2 className="w-5 h-5" /> Email Connections</h2>
+        <p className="text-sm text-muted-foreground mt-1">Connected inboxes are checked for both sales and business expenses. Your ArtFlow Creative Tracker is managed separately above.</p>
       </div>
 
       {loading ? (
@@ -112,43 +114,45 @@ export default function EmailConnectionsCard() {
         </div>
       )}
 
-      <div className="border-t border-[hsl(var(--border))] pt-4 space-y-3">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0"><Table2 className="w-4 h-4" /></div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold">Google Sheets backup</p>
-            <p className="text-xs text-muted-foreground">Use an Expenses and Deductions tab as the final safety net. ArtFlow only imports rows that are missing.</p>
+      {user?.auth_backend !== "neon" && (
+        <div className="border-t border-[hsl(var(--border))] pt-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0"><Table2 className="w-4 h-4" /></div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">Legacy spreadsheet migration</p>
+              <p className="text-xs text-muted-foreground">This option is kept only for older accounts while they move to the standard ArtFlow Creative Tracker.</p>
+            </div>
+            {status?.sheets?.ready && <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-1" />}
           </div>
-          {status?.sheets?.ready && <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-1" />}
-        </div>
 
-        {!status?.sheets?.connected ? (
-          <button
-            onClick={() => connect("Google Sheets", status?.sheets?.connector_id)}
-            disabled={connecting === "Google Sheets"}
-            className="w-full h-11 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold"
-          >
-            {connecting === "Google Sheets" ? "Connecting…" : "Connect Google Sheets"}
-          </button>
-        ) : (
-          <>
-            <input
-              value={sheetValue}
-              onChange={(e) => setSheetValue(e.target.value)}
-              placeholder="Paste Google Sheet link or ID"
-              className="form-input"
-            />
+          {!status?.sheets?.connected ? (
             <button
-              onClick={saveSheet}
-              disabled={savingSheet}
-              className="w-full h-11 rounded-2xl bg-muted text-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              onClick={() => connect("Google Sheets", status?.sheets?.connector_id)}
+              disabled={connecting === "Google Sheets"}
+              className="w-full h-11 rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold"
             >
-              <RefreshCw className={`w-4 h-4 ${savingSheet ? "animate-spin" : ""}`} />
-              {savingSheet ? "Setting up…" : "Set Up Spreadsheet Backup"}
+              {connecting === "Google Sheets" ? "Connecting…" : "Connect Legacy Google Sheet"}
             </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <input
+                value={sheetValue}
+                onChange={(e) => setSheetValue(e.target.value)}
+                placeholder="Paste legacy Google Sheet link or ID"
+                className="form-input"
+              />
+              <button
+                onClick={saveSheet}
+                disabled={savingSheet}
+                className="w-full h-11 rounded-2xl bg-muted text-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <RefreshCw className={`w-4 h-4 ${savingSheet ? "animate-spin" : ""}`} />
+                {savingSheet ? "Setting up…" : "Migrate Legacy Spreadsheet"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }
