@@ -10,6 +10,7 @@ import ThemeSettings from "@/components/ThemeSettings";
 import EtsyConnectionCard from "@/components/EtsyConnectionCard";
 import VintedConnectionCard from "@/components/VintedConnectionCard";
 import EmailConnectionsCard from "@/components/EmailConnectionsCard";
+import TrackerSetupCard from "@/components/TrackerSetupCard";
 import BrowserSyncCard from "@/components/BrowserSyncCard";
 import DepopConnectionCard from "@/components/DepopConnectionCard";
 import EbayConnectionCard from "@/components/EbayConnectionCard";
@@ -56,6 +57,8 @@ export default function Account() {
       </section>
 
       <BusinessManager />
+
+      <TrackerSetupCard />
 
       <EmailConnectionsCard />
 
