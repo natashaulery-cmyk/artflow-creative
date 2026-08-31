@@ -3,6 +3,14 @@ import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 const TAB_VALUES = {
+  Guide: [
+    ['ArtFlow Creative Tracker — Quick Guide'],
+    [],
+    ['All Items', 'Track every item, condition, size, purchase info, listing status, sale platform, profit, box and bag location.'],
+    ['Orders', 'Sales pulled into ArtFlow. Bundles stay inside Orders as one order with the full bundle total.'],
+    ['Expenses', 'Business expenses pulled from connected email and supported sources. Receipt IDs help prevent duplicates.'],
+    ['Taxes', 'Planning totals for gross sales, order costs, deductible expenses, estimated net income and tax reserve.'],
+  ],
   Dashboard: [
     ['ArtFlow Creative Dashboard'],
     ['Total Sales', '=SUM(Orders!H2:H)'],
@@ -14,9 +22,12 @@ const TAB_VALUES = {
     ['eBay Sales', '=SUMIF(Orders!B2:B,"eBay",Orders!H2:H)'],
     ['Estimated Tax Reserve', '=Taxes!B7'],
   ],
+  'All Items': [
+    ['Item #','Product Name','Condition','Size','Item Description','Purchase Price','Purchase Date','Purchase Platform / Store','Listed?','Sold?','Sold On','Gross Sale Price','Fees','Shipping Cost','Net Profit','Sale Date','Box Letter','Bag Number'],
+    ['=SEQUENCE(999)'],
+  ],
   Orders: [['Sale Date','Platform','Order ID','Product Name','Quantity','Size','Unit Price','Sale Total','Buyer','Source Email ID','Base Item Cost','Paper & Ink','Packaging Cost','Total Cost','Estimated Profit','Source URL']],
   Expenses: [['Date','Category','Description','Amount','Deductible %','Deductible Amount','Source','Notes','Receipt ID']],
-  'Inventory Pricing': [['Name','Category','Size','Base Item Cost','Paper & Ink Cost','Packaging Cost','Total Unit Cost','Quantity On Hand','Low Stock Level','Image URL']],
   Taxes: [
     ['ArtFlow Tax Summary'],
     ['Gross Sales', '=SUM(Orders!H2:H)'],
