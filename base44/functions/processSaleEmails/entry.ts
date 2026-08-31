@@ -447,9 +447,10 @@ export default async function(req) {
     // of relisting every marketplace email since January on every foreground sync.
     // Keep a 7-day overlap so delayed emails and parser retries are still picked up.
     const caughtUp = !!priorState && Number(priorState.last_remaining || 0) === 0;
+    const senderQuery = enabledMarketplaces.map((site) => GMAIL_FROM[site]).filter(Boolean).join(' ');
     const query = caughtUp
-      ? 'newer_than:7d {from:vinted from:depop from:etsy from:ebay}'
-      : 'after:2026/01/01 {from:vinted from:depop from:etsy from:ebay}';
+      ? `newer_than:7d {${senderQuery}}`
+      : `after:2026/01/01 {${senderQuery}}`;
     const allMessageIds = [];
     let pageToken = '';
     do {
