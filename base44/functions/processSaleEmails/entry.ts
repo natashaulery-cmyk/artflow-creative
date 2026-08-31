@@ -8,6 +8,8 @@ const START_DATE = '2026-01-01';
 const BATCH_SIZE = 500;
 const LEGACY_MIGRATION_BATCH = 150;
 const PARSER_VERSION = 3;
+const ALL_MARKETPLACES = ['Vinted', 'Depop', 'Etsy', 'eBay'];
+const GMAIL_FROM = { Vinted: 'from:vinted', Depop: 'from:depop', Etsy: 'from:etsy', eBay: 'from:ebay' };
 
 const decode = (value = '') => {
   try {
