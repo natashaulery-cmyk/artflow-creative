@@ -12,6 +12,7 @@ const pool = new Pool({
 
 const normalize = (value = '') => String(value || '').trim().toLowerCase();
 const clean = (value = '') => String(value || '').trim();
+const TRACKER_TEMPLATE_ID = process.env.ARTFLOW_TRACKER_TEMPLATE_ID || '1a3xK_PNFbDwBwCR1N4PaBNPKN-fyrbGBAkXC6ukKv9Y';
 
 const TAB_VALUES = {
   Dashboard: [
@@ -166,104 +167,29 @@ async function googleRequest(accessToken, url, options = {}) {
 }
 
 async function createSpreadsheet(accessToken, businessName) {
-  const titles = Object.keys(TAB_VALUES);
-  const created = await googleRequest(accessToken, 'https://sheets.googleapis.com/v4/spreadsheets', {
-    method: 'POST',
-    body: JSON.stringify({
-      properties: { title: `ArtFlow Creative Tracker - ${businessName || 'My Business'}` },
-      sheets: titles.map((title) => ({
-        properties: {
-          title,
-          gridProperties: { rowCount: title === 'All Items' ? 1200 : 1000, columnCount: 26, frozenRowCount: 1 },
-        },
-      })),
-    }),
-  });
-
-  const spreadsheetId = created.spreadsheetId;
-  if (!spreadsheetId) throw new Error('Google did not return a spreadsheet ID.');
-
-  const valueData = Object.entries(TAB_VALUES).map(([title, values]) => ({
-    range: `${title}!A1`,
-    majorDimension: 'ROWS',
-    values,
-  }));
-  await googleRequest(accessToken, `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdate`, {
-    method: 'POST',
-    body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data: valueData }),
-  });
-
-  const sheetProps = created.sheets || [];
-  const sheetByTitle = Object.fromEntries(
-    sheetProps.map((sheet) => [sheet?.properties?.title, sheet?.properties?.sheetId]).filter(([, id]) => id != null)
-  );
-  const headerRequests = [];
-  for (const sheet of sheetProps) {
-    const sheetId = sheet?.properties?.sheetId;
-    const title = sheet?.properties?.title;
-    if (sheetId == null) continue;
-    headerRequests.push({
-      repeatCell: {
-        range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: { red: 0.92, green: 0.90, blue: 0.98 },
-            textFormat: { bold: true },
-          },
-        },
-        fields: 'userEnteredFormat(backgroundColor,textFormat.bold)',
-      },
-    });
-    headerRequests.push({
-      autoResizeDimensions: {
-        dimensions: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: title === 'All Items' ? 18 : 16 },
-      },
-    });
-  }
-  const dashboardSheetId = sheetByTitle.Dashboard;
-  const monthListSheetId = sheetByTitle['Month Lists'];
-  if (dashboardSheetId != null && monthListSheetId != null) {
-    headerRequests.push(
-      {
-        setDataValidation: {
-          range: { sheetId: dashboardSheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 },
-          rule: {
-            condition: { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: "='Month Lists'!$A$1:$A$1000" }] },
-            strict: true,
-            showCustomUi: true,
-          },
-        },
-      },
-      {
-        repeatCell: {
-          range: { sheetId: dashboardSheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 },
-          cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'mmmm yyyy' } } },
-          fields: 'userEnteredFormat.numberFormat',
-        },
-      },
-      {
-        repeatCell: {
-          range: { sheetId: monthListSheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 1 },
-          cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'mmmm yyyy' } } },
-          fields: 'userEnteredFormat.numberFormat',
-        },
-      },
-      {
-        updateSheetProperties: {
-          properties: { sheetId: monthListSheetId, hidden: true },
-          fields: 'hidden',
-        },
-      }
-    );
-  }
-
-  if (headerRequests.length) {
-    await googleRequest(accessToken, `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`, {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(TRACKER_TEMPLATE_ID)}/copy?supportsAllDrives=true`,
+    {
       method: 'POST',
-      body: JSON.stringify({ requests: headerRequests }),
-    });
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: `ArtFlow Creative Tracker - ${businessName || 'My Business'}`,
+      }),
+    }
+  );
+  const text = await response.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || `Could not copy the ArtFlow master tracker (${response.status}).`);
+    error.code = response.status === 401 || response.status === 403 ? 'GOOGLE_RECONNECT' : 'TEMPLATE_COPY_ERROR';
+    throw error;
   }
-
+  const spreadsheetId = clean(data?.id);
+  if (!spreadsheetId) throw new Error('Google did not return the copied tracker ID.');
   return spreadsheetId;
 }
 
