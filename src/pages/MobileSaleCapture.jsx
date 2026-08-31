@@ -211,7 +211,10 @@ export default function MobileSaleCapture() {
       const result = await artflowAuthClient.linkSocial({
         provider: "google",
         callbackURL: `${window.location.origin}/send-sale`,
-        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+        scopes: [
+          "https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive.file",
+        ],
         additionalParams: {
           access_type: "offline",
           include_granted_scopes: "true",
