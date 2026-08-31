@@ -20,24 +20,35 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const { error: neonError } = await artflowAuthClient.signIn.email({
-        email: email.trim(),
-        password,
-        rememberMe: true,
-      });
-      if (!neonError) {
-        window.location.href = returnTo;
-        return;
+      let neonError = null;
+
+      // Try the newer Neon/Better Auth login when its API is available.
+      // On the Base44-hosted custom domain, /api/auth may be served by the SPA
+      // instead of the Vercel auth function, so any transport/parse failure must
+      // fall through to the Base44 login rather than blocking sign-in entirely.
+      try {
+        const result = await artflowAuthClient.signIn.email({
+          email: email.trim(),
+          password,
+          rememberMe: true,
+        });
+        neonError = result?.error || null;
+        if (!neonError) {
+          window.location.href = returnTo;
+          return;
+        }
+      } catch (error) {
+        neonError = error;
       }
 
-      // Temporary fallback for users who still only have a legacy Base44 login.
+      // Compatibility login for the currently published Base44-hosted domain.
       try {
         const { base44 } = await import("@/api/base44Client");
         await base44.auth.loginViaEmailPassword(email.trim(), password);
         window.location.href = returnTo;
         return;
       } catch {
-        throw new Error(neonError.message || "Email or password is incorrect.");
+        throw new Error(neonError?.message || "Email or password is incorrect.");
       }
     } catch (err) {
       setError(err?.message || "Could not sign in. Check your email and password.");
