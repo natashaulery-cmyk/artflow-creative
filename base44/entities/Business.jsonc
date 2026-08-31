@@ -32,7 +32,19 @@
       "items": {
         "type": "string"
       },
-      "description": "Email accounts used to import business expenses for this business"
+      "description": "Email addresses associated with business expense purchases and connected expense inboxes"
+    },
+    "spreadsheet_id": {
+      "type": "string",
+      "description": "Google Sheets spreadsheet used as the master Art Flow Creative tracker"
+    },
+    "extension_sync_key": {
+      "type": "string",
+      "description": "Secret browser-extension key used to submit marketplace order metadata without sharing marketplace passwords or session cookies"
+    },
+    "extension_sync_enabled": {
+      "type": "boolean",
+      "description": "Whether Art Flow Browser Sync is enabled for this business"
     }
   },
   "required": [
