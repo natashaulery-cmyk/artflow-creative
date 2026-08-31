@@ -1,0 +1,4 @@
+{
+  "name": "flushBrowserCaptures",
+  "entry": "entry.ts"
+}
