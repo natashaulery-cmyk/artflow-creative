@@ -11,6 +11,12 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   socialProviders.google = {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    // Google is both a sign-in provider and the user's direct spreadsheet
+    // connection. Better Auth stores/refreshes this token in Neon, so Art Flow
+    // does not need the legacy Base44 Google Sheets connector for Neon users.
+    scope: ["https://www.googleapis.com/auth/spreadsheets"],
+    accessType: "offline",
+    includeGrantedScopes: true,
   };
 }
 
@@ -47,6 +53,8 @@ export const auth = betterAuth({
   trustedOrigins: [
     "https://art-flow-creative-staging.vercel.app",
     "https://art-flow-creative.vercel.app",
+    "https://artflowcreative.com",
+    "https://www.artflowcreative.com",
     "https://appleid.apple.com",
   ],
 });
