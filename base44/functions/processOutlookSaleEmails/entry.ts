@@ -3,6 +3,7 @@ import { calculateOrderCosts } from '../../shared/orderCost.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 import { getOutlookConnection, getOutlookProfile, listOutlookMessages, outlookSender, outlookBody, outlookDate } from '../../shared/outlookMail.js';
 import { parseKnownSale, platformFromSender, sameSale, validDate } from '../../shared/marketplaceEmailParser.js';
+import { appendOrdersToMasterSheet } from '../../shared/spreadsheetMaster.js';
 
 const START_DATE = '2026-01-01';
 const BATCH_SIZE = 500;
@@ -64,6 +65,7 @@ export default async function(req) {
     const inventoryCosts = inventory.filter((x) => x.business_id === businessId || (!x.business_id && x.created_by_id === ownerId));
 
     let created = 0, skipped = 0, errors = 0;
+    const createdForSheet = [];
     const recordHistory = async (messageId, status, platform, details) => {
       const id = `outlook:${messageId}`;
       const payload = { message_id: id, import_type: 'sale', status, platform: platform || null, details: String(details || '').slice(0, 500), business_id: businessId, parser_version: 3 };
@@ -137,6 +139,7 @@ export default async function(req) {
           ...costs,
         });
         currentOrders.push(createdOrder);
+        createdForSheet.push(createdOrder);
         await recordHistory(message.id, 'imported', platform, subject);
         created++;
       } catch (e) {
@@ -145,9 +148,20 @@ export default async function(req) {
       }
     }
 
+    let emailSheetAppended = 0;
+    try {
+      if (createdForSheet.length) {
+        const writeResult = await appendOrdersToMasterSheet(base44, workspace, createdForSheet);
+        emailSheetAppended = Number(writeResult?.appended || 0);
+      }
+    } catch {
+      // Preserve the captured sale in Art Flow and retry sheet persistence later
+      // if Google Sheets is temporarily unavailable.
+    }
+
     const remaining = Math.max(0, pending.length - batch.length);
     const message = created ? `Synced ${created} Outlook sale${created === 1 ? '' : 's'}${remaining ? ` · ${remaining} emails left` : ''}` : remaining ? `Checked ${batch.length} Outlook emails · ${remaining} left` : 'Outlook sales are up to date';
-    const response = { provider: 'Outlook', connected_email: profile.email, found: messages.length, processed: batch.length, created, skipped, errors, remaining, message };
+    const response = { provider: 'Outlook', connected_email: profile.email, found: messages.length, processed: batch.length, created, email_sheet_appended: emailSheetAppended, skipped, errors, remaining, message };
     await saveState(base44, ownerId, businessId, { ...response, status: errors ? 'error' : 'ok' });
     return Response.json(response);
   } catch (e) {
