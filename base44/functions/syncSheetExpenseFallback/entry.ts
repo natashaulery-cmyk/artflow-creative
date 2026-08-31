@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { GOOGLE_SHEETS_CONNECTOR_ID } from '../../shared/sheetsConnector.js';
 import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
-const SHEETS = ['Expenses', 'Deductions'];
+const SHEETS = ['💸 Expenditures / Materials', 'Expenses', 'Deductions'];
 
 const lower = (value = '') => String(value || '').trim().toLowerCase();
 const num = (value, fallback = 0) => {
@@ -77,15 +77,15 @@ async function fetchRows(spreadsheetId, sheetName, accessToken) {
 
 function parseRows(rows, sheetName) {
   const headerIndex = rows.findIndex((row) =>
-    Array.isArray(row) && row.some((cell) => /^date$/i.test(String(cell || '').trim())) && row.some((cell) => /description/i.test(String(cell || '')))
+    Array.isArray(row) && row.some((cell) => /date/i.test(String(cell || '').trim())) && row.some((cell) => /description|item/i.test(String(cell || '')))
   );
   if (headerIndex < 0) return [];
   const headers = headerMap(rows[headerIndex]);
   const idx = {
-    date: findIndex(headers, ['date']),
+    date: findIndex(headers, ['purchase date', 'date']),
     category: findIndex(headers, ['category']),
     description: findIndex(headers, ['description', 'item', 'vendor']),
-    amount: findIndex(headers, ['amount', 'total']),
+    amount: findIndex(headers, ['cost price', 'amount', 'total', 'cost']),
     deductiblePercent: findIndex(headers, ['deductible %', 'deductible percent']),
     deductibleAmount: findIndex(headers, ['deductible amount']),
     source: findIndex(headers, ['source', 'vendor', 'merchant']),
