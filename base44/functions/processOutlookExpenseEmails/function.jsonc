@@ -1,4 +1,15 @@
 {
   "name": "processOutlookExpenseEmails",
-  "entry": "entry.ts"
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Sync Outlook business expenses every 5 minutes",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "*/5 * * * *",
+      "description": "Import business receipts and expense emails from connected Microsoft/Outlook inboxes",
+      "is_active": true
+    }
+  ]
 }
