@@ -101,7 +101,23 @@ export default function Orders() {
         // Not connected is expected for users who only use Gmail.
       }
 
-      toast.success(emailMessages.at(-1) || directMessages.at(-1) || "All available sales are synced");
+      // Google Sheets is the final fallback. It runs after marketplace/email
+      // sources and only adds rows that are still missing.
+      let sheetMessage = "";
+      try {
+        const sheetRes = await base44.functions.invoke("importFromSheets", {
+          mode: "orders",
+          sheetName: "Orders",
+        });
+        const sheetData = sheetRes?.data || {};
+        if (Number(sheetData.imported || 0) > 0) {
+          sheetMessage = `Spreadsheet added ${sheetData.imported} missing sale${Number(sheetData.imported) === 1 ? "" : "s"}`;
+        }
+      } catch {
+        // A missing/unavailable spreadsheet must not block marketplace/email sync.
+      }
+
+      toast.success(sheetMessage || emailMessages.at(-1) || directMessages.at(-1) || "All available sales are synced");
       await reloadOrders();
     } catch (e) {
       toast.error("Sales sync failed", { description: e?.response?.data?.error || e?.message });
