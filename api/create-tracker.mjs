@@ -14,17 +14,6 @@ const normalize = (value = '') => String(value || '').trim().toLowerCase();
 const clean = (value = '') => String(value || '').trim();
 
 const TAB_VALUES = {
-  Guide: [
-    ['ArtFlow Creative Tracker — Quick Guide'],
-    [],
-    ['All Items', 'Track every item, condition, size, purchase info, listing status, sale platform, profit, box and bag location.'],
-    ['Orders', 'Sales imported by Art Flow. Bundles stay inside Orders as one order with the full bundle total.'],
-    ['Expenses', 'Business expenses imported from connected email and supported sources. Receipt IDs help prevent duplicates.'],
-    ['Inventory Costs', 'Cost backup used by Art Flow for size-based art, paper/ink, packaging, quantity on hand, and low-stock levels.'],
-    ['Taxes', 'Planning totals for gross sales, order costs, deductible expenses, estimated net income and tax reserve.'],
-    [],
-    ['Connection', 'Art Flow uses marketplace/email sources first, then this spreadsheet as the fallback for missing Orders and Expenses. Keep the standard headers unchanged.'],
-  ],
   Dashboard: [
     ['ArtFlow Creative Dashboard'],
     ['Statistics Month', 'All Months'],
