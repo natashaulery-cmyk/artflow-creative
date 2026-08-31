@@ -30,13 +30,19 @@ export async function resolveBusinessWorkspace(base44, emailHint = '') {
   // Prefer a business that explicitly lists this email as a member, sales inbox,
   // or expense inbox. This keeps multiple connected mail providers in the same
   // workspace even if an older duplicate user record points elsewhere.
-  let business = email
-    ? businesses.find((b) =>
+  const emailBusinesses = email
+    ? businesses.filter((b) =>
       (b.sales_emails || []).some((member) => lower(member) === email)
       || (b.expense_emails || []).some((member) => lower(member) === email)
       || (b.member_emails || []).some((member) => lower(member) === email)
+      || lower(b.primary_email) === email
     )
-    : null;
+    : [];
+  // Prefer the shared business that owns a spreadsheet. This prevents stale
+  // duplicate workspaces from splitting sales/expense imports by login.
+  let business = emailBusinesses.find((b) => String(b.spreadsheet_id || '').trim())
+    || emailBusinesses[0]
+    || null;
   if (!business) business = businesses.find((b) => b.id === activeId);
   if (!business) business = businesses.find((b) => b.created_by_id === user.id);
 
