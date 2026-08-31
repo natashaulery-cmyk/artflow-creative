@@ -697,13 +697,35 @@ export default async function(req) {
       }
     }
 
+    // The shared Google Sheet is the final safety net. Run it after Gmail so it
+    // only fills sales that the direct/email sources did not already create.
+    let spreadsheetCreated = 0;
+    let spreadsheetSkipped = 0;
+    try {
+      const sheetResult = await importSpreadsheetOrderFallback({
+        base44,
+        workspace,
+        ownerId,
+        businessId,
+        accessEmails,
+        inventoryCosts,
+        targetOrders,
+        today,
+      });
+      spreadsheetCreated = Number(sheetResult?.created || 0);
+      spreadsheetSkipped = Number(sheetResult?.skipped || 0);
+    } catch {
+      // Spreadsheet fallback is deliberately non-blocking.
+    }
+
     const emailRemaining = Math.max(0, unseenIds.length - batch.length);
     const legacyRemaining = Math.max(0, legacyCandidates.length - Math.min(legacyCandidates.length, LEGACY_MIGRATION_BATCH));
     const remaining = emailRemaining + legacyRemaining;
+    const totalCreated = created + migrated + spreadsheetCreated;
     const message = remaining > 0
-      ? `Synced ${created + migrated} order${created + migrated === 1 ? '' : 's'}. Backfill continuing automatically (${remaining} records left).`
-      : created + migrated
-        ? `Synced ${created + migrated} order${created + migrated === 1 ? '' : 's'}. Everything is up to date.`
+      ? `Synced ${totalCreated} order${totalCreated === 1 ? '' : 's'}. Backfill continuing automatically (${remaining} records left).`
+      : totalCreated
+        ? `Synced ${totalCreated} order${totalCreated === 1 ? '' : 's'}. Everything is up to date.`
         : 'Everything is up to date.';
 
     const response = {
@@ -712,6 +734,8 @@ export default async function(req) {
       processed: batch.length,
       created,
       migrated,
+      spreadsheet_created: spreadsheetCreated,
+      spreadsheet_skipped: spreadsheetSkipped,
       legacy_archived: legacyArchived,
       skipped,
       errors,
