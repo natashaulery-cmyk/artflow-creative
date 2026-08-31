@@ -12,7 +12,7 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     );
     const meta = await metaRes.json();
     const tabs = (meta.sheets || []).map((s) => s.properties.title);
-    tab = tabs.find((t) => /inventory|stock|cost|pieces/i.test(t)) || tabs[0];
+    tab = tabs.find((t) => /^all items$/i.test(t)) || tabs.find((t) => /inventory|stock|cost|pieces/i.test(t)) || tabs[0];
     if (!tab) return Response.json({ error: 'No sheets found' }, { status: 400 });
   }
 
@@ -49,11 +49,12 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
     category: colIndex(['category', 'type', 'kind']),
     image: colIndex(['image', 'photo', 'picture', 'image_url', 'link', 'url']),
     size: colIndex(['size', 'print', 'dimensions']),
-    base: colIndex(['base', 'base_item', 'item cost', 'cost', 'frame']),
+    base: colIndex(['purchase price', 'base', 'base_item', 'item cost', 'cost', 'frame']),
     paperInk: colIndex(['paper', 'ink', 'paper_ink', 'material']),
     packaging: colIndex(['packaging', 'pack', 'mail']),
     qty: colIndex(['quantity', 'qty', 'on hand', 'stock', 'count']),
     low: colIndex(['low', 'reorder', 'threshold']),
+    sold: colIndex(['sold?', 'sold']),
   };
 
   const num = (v, fallback = 0) => {
@@ -84,7 +85,9 @@ export async function importInventory(base44, accessToken, spreadsheetId, sheetN
       base_item_cost: num(idx.base >= 0 ? row[idx.base] : 0),
       paper_ink_cost: idx.paperInk >= 0 ? num(row[idx.paperInk], 0.09) : 0.09,
       packaging_cost: idx.packaging >= 0 ? num(row[idx.packaging], 0.4) : 0.4,
-      quantity_on_hand: num(idx.qty >= 0 ? row[idx.qty] : 0),
+      quantity_on_hand: idx.qty >= 0
+        ? num(row[idx.qty])
+        : (idx.sold >= 0 && ['true', 'yes', 'sold', '1'].includes(String(row[idx.sold] || '').toLowerCase().trim()) ? 0 : 1),
       low_stock_level: idx.low >= 0 ? num(row[idx.low], 5) : 5,
     };
     if (name) record.name = name;
