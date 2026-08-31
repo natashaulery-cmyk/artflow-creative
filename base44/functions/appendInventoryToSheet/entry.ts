@@ -4,18 +4,26 @@ import { resolveBusinessWorkspace } from '../../shared/ownerUser.js';
 
 // Inventory export. Appends a single inventory item to the spreadsheet saved
 // on the current user's account, using the app's managed Google Sheets connection.
-const SHEET_NAME = 'Inventory Pricing';
+const SHEET_NAME = 'All Items';
 const HEADERS = [
-  'Name',
-  'Category',
+  'Item #',
+  'Product Name',
+  'Condition',
   'Size',
-  'Base Item Cost',
-  'Paper & Ink Cost',
-  'Packaging Cost',
-  'Total Unit Cost',
-  'Quantity On Hand',
-  'Low Stock Level',
-  'Image URL',
+  'Item Description',
+  'Purchase Price',
+  'Purchase Date',
+  'Purchase Platform / Store',
+  'Listed?',
+  'Sold?',
+  'Sold On',
+  'Gross Sale Price',
+  'Fees',
+  'Shipping Cost',
+  'Net Profit',
+  'Sale Date',
+  'Box Letter',
+  'Bag Number',
 ];
 
 export default async function(req) {
@@ -83,35 +91,42 @@ export default async function(req) {
       await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
           SHEET_NAME
-        )}!A1:append?valueInputOption=RAW`,
+        )}!A1:append?valueInputOption=USER_ENTERED`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ values: [HEADERS] }),
+          body: JSON.stringify({ values: [HEADERS, ['=SEQUENCE(999)']] }),
         }
       );
     }
 
     const row = [
       item.name || '',
-      item.category || '',
+      '',
       item.size || '',
-      item.base_item_cost ?? '',
-      item.paper_ink_cost ?? '',
-      item.packaging_cost ?? '',
-      item.total_unit_cost ?? '',
-      item.quantity_on_hand ?? '',
-      item.low_stock_level ?? '',
-      item.image_url || '',
+      item.category || '',
+      item.total_unit_cost ?? item.base_item_cost ?? '',
+      '',
+      'ArtFlow',
+      false,
+      false,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
     ];
 
     const appendRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
         SHEET_NAME
-      )}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      )}!B1:R1000:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       {
         method: 'POST',
         headers: {
