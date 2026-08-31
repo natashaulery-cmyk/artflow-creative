@@ -87,8 +87,8 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<IndependentLogin />} />
+      <Route path="/register" element={<IndependentRegister />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/new-login" element={<IndependentLogin />} />
       <Route path="/new-register" element={<IndependentRegister />} />
