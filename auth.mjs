@@ -9,6 +9,7 @@ const vercelProductionURL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 const vercelDeploymentURL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "";
+// Canonical production origin used by Better Auth on the custom domain.
 const canonicalProductionURL = "https://artflowcreative.com";
 const baseURL = process.env.BETTER_AUTH_URL || (
   process.env.VERCEL_ENV === "production"
