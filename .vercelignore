@@ -1,0 +1,14 @@
+node_modules
+.vercel
+.env
+.env.*
+dist-single
+dist-permanent
+dist-vercel-single
+deploy-staging
+artflow-standalone.html
+artflow-standalone.pre-vercel.html
+artflow-loader.html
+artflow-vercel-loader.html
+artflow-src.b64
+tmp-vercel-domain-api.cjs
