@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import App from '@/App.jsx'
 import '@/index.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
@@ -26,13 +27,30 @@ const Recovery = ({ message = 'Loading Art Flow Creative…' }) => (
   </div>
 )
 
-root.render(<Recovery />)
+class StartupErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
 
-import('@/App.jsx')
-  .then(({ default: App }) => {
-    root.render(<App />)
-  })
-  .catch((error) => {
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error) {
     console.error('App failed to start:', error)
-    root.render(<Recovery message="The app could not start. Tap below to reopen the login screen safely." />)
-  })
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <Recovery message="The app could not start. Tap below to reopen the login screen safely." />
+    }
+    return this.props.children
+  }
+}
+
+root.render(
+  <StartupErrorBoundary>
+    <App />
+  </StartupErrorBoundary>
+)
